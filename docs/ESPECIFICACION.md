@@ -1,6 +1,7 @@
-# P.Melodies — Prompt de desarrollo para Claude Code
+# P.Melodies — Especificación
 
-> Pega este documento completo como primer mensaje en Claude Code, con la carpeta `docs/design/` dentro del repositorio.
+> Especificación del producto y plan de desarrollo por fases. Las reglas de trabajo (antes sección 1)
+> están en [`CLAUDE.md`](../CLAUDE.md). Las rutas a `docs/design/` son relativas a la raíz del repositorio.
 
 ---
 
@@ -23,25 +24,6 @@ Vas a construir **P.Melodies**, un plugin de audio VST3 para FL Studio en Window
 - Pantallas: `01-vista-general-eq`, `02-compresor`, `03-saturacion-multibanda`, `03b-saturacion-menu-estilos-abierto`, `04-distorsion`, `05-presets-y-ajustes`, `06-componentes-e-interacciones`, `07-plantillas-de-aspecto`.
 
 **Funcionalidad e interacciones de las referencias:** obligatorias. **Colores y estilo visual:** provisionales. P.P. los cambiará más adelante, así que centraliza todos los colores, fuentes y medidas en un único sistema de tema para poder cambiarlos sin tocar los componentes.
-
----
-
-## 1. Reglas de trabajo (obligatorias en todo el proyecto)
-
-1. **Una fase cada vez.** El desarrollo está dividido en fases (sección 9). No empieces una fase hasta que P.P. haya dado su **visto bueno explícito** a la anterior. Un "vale" a otra cosa no cuenta: pregunta si tienes dudas.
-2. **Cierre de cada fase.** Al terminarla:
-   - Todos los tests automáticos en verde, en local y en CI (Windows y Linux).
-   - pluginval sin errores en el build de Windows.
-   - Un `.vst3` descargable del workflow.
-   - Un mensaje a P.P. con: qué se ha hecho, cómo descargar el build, una **lista concreta de pruebas manuales en FL Studio** (pasos y resultado esperado), los límites conocidos y una explicación breve (3–6 líneas) de los conceptos de C++ o DSP nuevos de esa fase.
-   - **Detente y espera.** No adelantes trabajo de la fase siguiente.
-3. **Si P.P. encuentra un fallo:** corrígelo, añade un test que lo reproduzca, vuelve a pasar **todos** los tests (también los de fases anteriores) y entrega de nuevo. Un fallo en un módulo puede repetirse en otros: revisa si el mismo patrón existe en el código compartido.
-4. **Regresión cero.** Ninguna fase puede romper algo ya aprobado. La batería de tests crece con cada fase y se ejecuta entera siempre.
-5. **Nada sin probar.** No digas que algo funciona si no lo has comprobado con un test o con el build. Si algo no se puede probar automáticamente, dilo y añádelo a la lista manual.
-6. **Pregunta antes de decidir** algo que cambie el comportamiento audible, la interfaz o el alcance. Para detalles técnicos internos, decide tú y explica la decisión en el cierre de fase.
-7. **Commits pequeños y descriptivos**, en inglés, siguiendo Conventional Commits (`feat(eq): …`, `fix(comp): …`, `test: …`). Una rama por fase (`phase/0-foundation`, `phase/1-eq`…), fusionada a `main` solo tras el visto bueno.
-8. **Código propio.** Emula el *comportamiento* de los plugins de referencia, nunca su código, nombre, logos ni interfaz. No copies código de Vital (es GPL) ni de ningún otro proyecto: puedes inspirarte en ideas documentadas públicamente (artículos, papers, libros de DSP) y debes citarlas en `docs/dsp/`.
-9. **Persistencia de las reglas.** En la fase 0, copia esta sección 1 a un `CLAUDE.md` en la raíz del repo y el resto del documento a `docs/ESPECIFICACION.md`, para que las reglas sigan vigentes en futuras sesiones.
 
 ---
 
@@ -347,3 +329,20 @@ Diseña el código para que estas mejoras se puedan añadir sin reescribir lo ex
 1. Lee este documento completo y mira todas las imágenes de `docs/design/png/`.
 2. Responde a P.P. con un resumen de 10 líneas de lo que vas a construir, el plan detallado de la **Fase 0** y las dudas que tengas.
 3. Espera su confirmación y empieza la Fase 0.
+
+---
+
+## 12. Decisiones aprobadas
+
+Decisiones tomadas con P.P. antes de empezar la Fase 0. Tienen el mismo valor que el resto de la especificación.
+
+| Tema | Decisión |
+|---|---|
+| Ramas | Una rama por fase (`phase/0-foundation`, `phase/1-eq`…). P.P. la fusiona a `main` con un PR tras dar el visto bueno. |
+| Fabricante y copyright | Fabricante `JoseFrMunoz` (visible en FL Studio). Cabeceras: `Copyright (C) 2026 JoseFrMunoz`. Los códigos internos del plugin (fabricante y plugin) se fijan en la Fase 0 y no se cambian nunca. |
+| Latencia | Se declara siempre la máxima posible (lookahead máximo + oversampling máximo), aunque el lookahead esté a 0 y el oversampling apagado. Con el compresor (Fase 2) serán unos 20 ms más unos pocos ms de oversampling. |
+| Comparar a igual volumen | Interruptor. Activado: se escucha la señal original, alineada en latencia, con la ganancia que iguala su RMS al del procesado (RMS integrado durante unos 3 s, medido siempre en segundo plano). Entrada y salida con fundido de 20 ms. Ganancia de igualación limitada a ±24 dB. |
+| Clipper de seguridad | Idéntico a la entrada por debajo de *techo − 3 dB*; entre ese punto y el techo, curva suave que nunca supera el techo. Techo ajustable de −6 a 0 dBFS (por defecto −0,3). Sin oversampling, para no añadir latencia. |
+| Qué se guarda dónde | Tamaño de ventana, tema y tooltips: preferencias del usuario, comunes a todas las instancias. Calidad (reproducir/exportar), clipper y techo: se guardan con el proyecto, pero cargar un preset no los cambia. Todo lo demás (módulos, orden, entrada, salida, mix) va en el preset. |
+| Cabecera en la Fase 0 | Visible completa. Presets, A/B, deshacer/rehacer y tema aparecen atenuados («Disponible más adelante») hasta la Fase 5. Ajustes y el botón Calidad abren el panel de ajustes con las secciones de calidad y clipper. |
+| `PROMPT.md` | Sustituido por `CLAUDE.md` + este documento. El original queda en el historial de git. |
