@@ -5,6 +5,10 @@
 #          installer (.exe) that is itself tested: install, reinstall, uninstall.
 # Linux:   build and unit tests.
 # Tags v*: a GitHub Release with the zipped .vst3 and the installer.
+#
+# Speed: both jobs keep a compiler cache (ccache) between runs, so a push only recompiles the
+# files it changed; JUCE and Catch2 come from the cache. Windows builds with Ninja + MSVC (the
+# Visual Studio generator cannot use a compiler cache, and Ninja keeps every core busy).
 
 name: Build
 
@@ -15,6 +19,7 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A new push to the same branch cancels the run that is still going.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -25,6 +30,11 @@ permissions:
 env:
   PLUGINVAL_VERSION: v1.0.4
   VST3_DIR: build/PMelodies_artefacts/Release/VST3
+  CCACHE_VERSION: 4.11.3
+  # SHA-256 of ccache-4.11.3-windows-x86_64.zip from the official ccache release.
+  CCACHE_WINDOWS_SHA256: bfd031cad091b7db7e68c3303be542b0f7fee7a3e716d76ec6f7e6c7ef4b3526
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 500M
 
 jobs:
   windows:
@@ -34,11 +44,72 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Configure
-        run: cmake -B build -A x64
+      # Exports the variables of vcvars64.bat (compiler, linker, SDK paths) to the next steps.
+      - name: Visual Studio environment
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw 'Visual Studio with the x64 C++ tools was not found' }
+          Write-Host "Visual Studio: $vs"
+          $script = Join-Path $env:RUNNER_TEMP 'vcvars-env.cmd'
+          Set-Content -Path $script -Value "@call `"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul 2>&1`r`n@set"
+          $vars = & cmd.exe /d /c $script
+          if (-not ($vars -match '^VCToolsInstallDir=')) { throw 'vcvars64.bat did not set up the compiler' }
+          foreach ($line in $vars) {
+            if ($line -match '^([^=]+)=(.*)$') {
+              $name = $Matches[1]
+              $value = $Matches[2]
+              if ([Environment]::GetEnvironmentVariable($name) -ne $value) {
+                "$name=$value" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+              }
+            }
+          }
 
+      - name: Install ccache
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'ccache.zip'
+          Invoke-WebRequest -OutFile $zip `
+            -Uri "https://github.com/ccache/ccache/releases/download/v$env:CCACHE_VERSION/ccache-$env:CCACHE_VERSION-windows-x86_64.zip"
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash
+          if ($hash -ne $env:CCACHE_WINDOWS_SHA256) { throw "Unexpected ccache download (SHA-256 $hash)" }
+          Expand-Archive $zip -DestinationPath $env:RUNNER_TEMP
+          $dir = Join-Path $env:RUNNER_TEMP "ccache-$env:CCACHE_VERSION-windows-x86_64"
+          $exe = (Join-Path $dir 'ccache.exe').Replace('\', '/')
+          $dir | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          "CMAKE_C_COMPILER_LAUNCHER=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "CMAKE_CXX_COMPILER_LAUNCHER=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Restore compiler cache
+        id: ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache
+          key: ccache-windows-${{ github.sha }}
+          restore-keys: ccache-windows-
+
+      - name: Configure
+        run: |
+          cmake --version
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      # PowerShell does not stop when a native command fails: keep the build's exit code.
       - name: Build
-        run: cmake --build build --config Release --parallel
+        run: |
+          ccache --zero-stats
+          cmake --build build --parallel
+          $buildExitCode = $LASTEXITCODE
+          ccache --show-stats
+          exit $buildExitCode
+
+      # Saved even if a later step fails, so the next run does not recompile everything.
+      - name: Save compiler cache
+        if: ${{ !cancelled() && steps.ccache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-windows-${{ github.sha }}
 
       - name: Unit tests
         run: ctest --test-dir build -C Release --output-on-failure
@@ -110,21 +181,67 @@ jobs:
     name: Linux · build and tests
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+      APT_ARCHIVES: /home/runner/apt-archives
     steps:
       - uses: actions/checkout@v5
 
+      # The .deb files are kept between runs: a slow Ubuntu mirror once took two minutes.
+      - name: Restore apt packages
+        id: apt-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.APT_ARCHIVES }}
+          key: apt-ubuntu-24.04-latest
+          restore-keys: apt-ubuntu-24.04-
+
       - name: Install dependencies
+        id: apt
         run: |
+          mkdir -p "$APT_ARCHIVES/partial"
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ninja-build xvfb \
+          sudo apt-get install -y --no-install-recommends \
+            -o Dir::Cache::Archives="$APT_ARCHIVES" -o APT::Sandbox::User=root \
+            ninja-build ccache xvfb \
             libasound2-dev libfreetype-dev libfontconfig1-dev libx11-dev libxcomposite-dev \
             libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev
+          sudo rm -rf "$APT_ARCHIVES/partial" "$APT_ARCHIVES/lock"
+          sudo chown -R "$(id -u):$(id -g)" "$APT_ARCHIVES"
+          echo "$(ls "$APT_ARCHIVES" | wc -l) packages kept in $APT_ARCHIVES"
+          echo "key=apt-ubuntu-24.04-$(ls "$APT_ARCHIVES" | sort | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
+
+      - name: Save apt packages
+        if: steps.apt.outputs.key != steps.apt-cache.outputs.cache-matched-key
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.APT_ARCHIVES }}
+          key: ${{ steps.apt.outputs.key }}
+
+      - name: Restore compiler cache
+        id: ccache
+        uses: actions/cache/restore@v4
+        with:
+          path: .ccache
+          key: ccache-linux-${{ github.sha }}
+          restore-keys: ccache-linux-
 
       - name: Configure
         run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build --parallel
+        run: |
+          ccache --zero-stats
+          cmake --build build --parallel
+          ccache --show-stats
+
+      - name: Save compiler cache
+        if: ${{ !cancelled() && steps.ccache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ccache-linux-${{ github.sha }}
 
       - name: Unit tests
         run: xvfb-run -a ctest --test-dir build --output-on-failure
