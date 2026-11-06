@@ -75,7 +75,8 @@ void PMelodiesProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     juce::AudioBuffer<float> sidechainBuffer;
     const juce::AudioBuffer<float>* sidechain = nullptr;
 
-    if (getBusCount (true) > 1)
+    // Only read the sidechain when the host really passed its channels.
+    if (getBusCount (true) > 1 && buffer.getNumChannels() >= getTotalNumInputChannels())
     {
         if (auto* bus = getBus (true, 1); bus != nullptr && bus->isEnabled() && bus->getNumberOfChannels() > 0)
         {

@@ -40,7 +40,6 @@ PMelodiesEditor::PMelodiesEditor (PMelodiesProcessor& p)
 
     selectModule (processor.getSelectedModule());
 
-    setWantsKeyboardFocus (true);
     setSize (baseWidth, baseHeight);
 
     lastRefresh = juce::Time::getMillisecondCounterHiRes();
@@ -105,7 +104,6 @@ void PMelodiesEditor::showSettings (bool shouldShow)
     else
     {
         settings.reset();
-        grabKeyboardFocus();
     }
 
     header.setSettingsOpen (shouldShow);

@@ -66,7 +66,9 @@ juce_add_plugin(PMelodies
     NEEDS_MIDI_INPUT            FALSE
     NEEDS_MIDI_OUTPUT           FALSE
     IS_MIDI_EFFECT              FALSE
-    EDITOR_WANTS_KEYBOARD_FOCUS TRUE
+    # Keyboard focus only when a control needs it (typing a value, Esc in a panel), so the
+    # plugin window never steals FL Studio's own shortcuts such as the space bar.
+    EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD     FALSE
     VST3_CATEGORIES             Fx EQ Dynamics Distortion)
 
