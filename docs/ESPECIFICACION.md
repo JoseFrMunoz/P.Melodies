@@ -346,3 +346,13 @@ Decisiones tomadas con P.P. antes de empezar la Fase 0. Tienen el mismo valor qu
 | Qué se guarda dónde | Tamaño de ventana, tema y tooltips: preferencias del usuario, comunes a todas las instancias. Calidad (reproducir/exportar), clipper y techo: se guardan con el proyecto, pero cargar un preset no los cambia. Todo lo demás (módulos, orden, entrada, salida, mix) va en el preset. |
 | Cabecera en la Fase 0 | Visible completa. Presets, A/B, deshacer/rehacer y tema aparecen atenuados («Disponible más adelante») hasta la Fase 5. Ajustes y el botón Calidad abren el panel de ajustes con las secciones de calidad y clipper. |
 | `PROMPT.md` | Sustituido por `CLAUDE.md` + este documento. El original queda en el historial de git. |
+
+---
+
+## 13. Pendientes
+
+Peticiones de P.P. anotadas para más adelante. **No se implementan** hasta que P.P. diga en qué fase van.
+
+| Fecha | Petición | Notas |
+|---|---|---|
+| 2026-11-06 | **Instalador `.exe` para Windows** que facilite la instalación: generado en el CI junto al `.vst3` (por ejemplo, con Inno Setup), copia `P.Melodies.vst3` a `C:\Program Files\Common Files\VST3`. | Sin certificado de firma de código (de pago), Windows avisará de "editor desconocido", aunque se puede instalar igualmente. Pendiente de asignar fase. |
