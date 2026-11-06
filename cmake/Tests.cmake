@@ -14,3 +14,9 @@ include(Catch)
 catch_discover_tests(Tests
     DISCOVERY_MODE PRE_TEST
     PROPERTIES TIMEOUT 600)
+
+# Tests compare floating-point samples for exact (bit-identical) equality on purpose. Set per source
+# so it comes after JUCE's recommended warning flags on the command line.
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    set_source_files_properties(${PM_TEST_SOURCES} PROPERTIES COMPILE_OPTIONS -Wno-float-equal)
+endif()
