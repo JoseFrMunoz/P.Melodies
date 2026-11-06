@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 JoseFrMunoz
+#
+# Windows: Release VST3, unit tests, pluginval (strictness 10) and the .vst3 as an artifact.
+# Linux:   build and unit tests.
+# Tags v*: a GitHub Release with the zipped .vst3.
+
+name: Build
+
+on:
+  push:
+    branches: [main, "phase/**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PLUGINVAL_VERSION: v1.0.4
+  VST3_DIR: build/PMelodies_artefacts/Release/VST3
+
+jobs:
+  windows:
+    name: Windows · VST3, tests, pluginval
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -A x64
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Unit tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Download pluginval
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/Tracktion/pluginval/releases/download/$env:PLUGINVAL_VERSION/pluginval_Windows.zip" -OutFile pluginval.zip
+          Expand-Archive pluginval.zip -DestinationPath pluginval
+
+      - name: pluginval (strictness 10)
+        shell: pwsh
+        run: |
+          .\pluginval\pluginval.exe --strictness-level 10 --validate-in-process --verbose `
+            --output-dir pluginval-logs --timeout-ms 900000 `
+            --validate "$env:VST3_DIR\P.Melodies.vst3"
+          if ($LASTEXITCODE -ne 0) { throw "pluginval failed with exit code $LASTEXITCODE" }
+
+      - name: Upload pluginval logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pluginval-logs-windows
+          path: pluginval-logs
+          if-no-files-found: ignore
+
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: P.Melodies-windows-vst3
+          path: ${{ env.VST3_DIR }}/
+          if-no-files-found: error
+
+  linux:
+    name: Linux · build and tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build xvfb \
+            libasound2-dev libfreetype-dev libfontconfig1-dev libx11-dev libxcomposite-dev \
+            libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev
+
+      - name: Configure
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Unit tests
+        run: xvfb-run -a ctest --test-dir build --output-on-failure
+
+  release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: P.Melodies-windows-vst3
+          path: dist
+
+      - name: Zip the VST3
+        run: cd dist && zip -r "../P.Melodies-${GITHUB_REF_NAME}-windows-vst3.zip" P.Melodies.vst3
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: P.Melodies-${{ github.ref_name }}-windows-vst3.zip
+          generate_release_notes: true
