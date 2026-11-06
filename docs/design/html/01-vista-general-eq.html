@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<title>P.Melodies — EQ</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet"><style>
+body{margin:0;background:#0B0D11}
+a{color:#5EE6C4}a:hover{color:#9CF0DA}
+.btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;padding:0 10px;border-radius:6px;background:#1D222B;border:1px solid #2A303B;color:#C9CED8;font:500 12px Inter,sans-serif;cursor:pointer;white-space:nowrap}
+.ico{all:unset;box-sizing:border-box;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;color:#8A93A3;cursor:pointer}
+.lbl{font:500 10px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8A93A3;white-space:nowrap}
+.val{font:500 11px 'JetBrains Mono',monospace;color:#E7EAF0;white-space:nowrap}
+.seg{display:inline-flex;background:#0F1115;border:1px solid #2A303B;border-radius:6px;padding:2px;gap:2px}
+.seg button{all:unset;padding:3px 9px;border-radius:4px;font:500 11px Inter,sans-serif;color:#8A93A3;cursor:pointer}
+.seg button.on{background:#2A303B;color:#E7EAF0}
+.knob{all:unset;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:ns-resize;min-width:60px}
+.shape{all:unset;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;color:#8A93A3;cursor:pointer}
+</style></head>
+<body>
+
+<div style="width:1000px;height:640px;display:flex;flex-direction:column;background:#0F1115;color:#E7EAF0;font-family:Inter,sans-serif;overflow:hidden">
+
+<header style="height:48px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid #222831;background:#13161C">
+<div style="display:flex;align-items:center;gap:8px;width:166px">
+<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9.5" fill="none" stroke="#5EE6C4" stroke-width="1.6" stroke-dasharray="44 16" stroke-linecap="round"></circle><text x="11" y="15" text-anchor="middle" font-family="Space Grotesk" font-weight="600" font-size="11" fill="#E7EAF0">P</text></svg>
+<span style="font:600 15px 'Space Grotesk',sans-serif">P.Melodies</span>
+</div>
+<div style="display:flex;align-items:center;gap:4px">
+<button class="ico" aria-label="Preset anterior"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4 6 8l4 4"></path></svg></button>
+<button class="btn" style="width:230px;justify-content:space-between"><span><span style="color:#8A93A3">Melodía /</span> Pluck brillante</span><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 6l4 4 4-4"></path></svg></button>
+<button class="ico" aria-label="Preset siguiente"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"></path></svg></button>
+<button class="ico" aria-label="Guardar preset"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h8l2 2v8H3z M5.5 3v3h5V3 M5.5 13V9.5h5V13"></path></svg></button>
+</div>
+<div style="flex:1"></div>
+<div class="seg"><button class="on">A</button><button>B</button></div>
+<button class="ico" aria-label="Copiar A en B"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"></rect><path d="M10.5 3.5V3a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h.5"></path></svg></button>
+<div style="width:1px;height:20px;background:#2A303B"></div>
+<button class="ico" aria-label="Deshacer"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4 2 7l3 3 M2 7h8a3.5 3.5 0 0 1 0 7H8"></path></svg></button>
+<button class="ico" aria-label="Rehacer"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4l3 3-3 3 M14 7H6a3.5 3.5 0 0 0 0 7h2"></path></svg></button>
+<div style="width:1px;height:20px;background:#2A303B"></div>
+<button class="ico" aria-label="Tema de aspecto"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 1.8a6.2 6.2 0 1 0 0 12.4c1 0 1.4-.7 1.1-1.5-.4-1 .2-1.9 1.3-1.9h1.6a2.2 2.2 0 0 0 2.2-2.2A6.6 6.6 0 0 0 8 1.8z"></path><circle cx="5" cy="7" r=".9" fill="currentColor"></circle><circle cx="8" cy="4.8" r=".9" fill="currentColor"></circle><circle cx="11" cy="7" r=".9" fill="currentColor"></circle></svg></button>
+<button class="ico" aria-label="Ajustes"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="2.2"></circle><path d="M8 1.5v2 M8 12.5v2 M1.5 8h2 M12.5 8h2 M3.4 3.4l1.4 1.4 M11.2 11.2l1.4 1.4 M3.4 12.6l1.4-1.4 M11.2 4.8l1.4-1.4"></path></svg></button>
+</header>
+
+<div style="flex:1;min-height:0;display:flex">
+<aside style="width:180px;flex:none;border-right:1px solid #222831;background:#13161C;padding:12px 10px;display:flex;flex-direction:column;gap:5px;box-sizing:border-box">
+<div class="lbl" style="padding:0 6px 4px">Cadena de señal</div>
+<div style="display:flex;align-items:center;gap:6px;padding:2px 6px"><span class="val" style="color:#8A93A3">IN</span><span style="flex:1;height:1px;background:#2A303B"></span></div>
+
+<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:7px;cursor:grab;background:#1D222B;border:1px solid #5EE6C466;">
+<svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true" fill="#5B6473"><circle cx="3" cy="4" r="1.2"></circle><circle cx="7" cy="4" r="1.2"></circle><circle cx="3" cy="8" r="1.2"></circle><circle cx="7" cy="8" r="1.2"></circle><circle cx="3" cy="12" r="1.2"></circle><circle cx="7" cy="12" r="1.2"></circle></svg>
+<span style="width:8px;height:8px;border-radius:2px;flex:none;background:#5EE6C4"></span>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px"><span style="font:500 13px Inter,sans-serif;color:#E7EAF0">EQ</span><span style="font:400 10px Inter,sans-serif;color:#8A93A3">5 bandas</span></div>
+<button class="ico" style="width:24px;height:24px;color:#5EE6C4" aria-label="Apagar EQ"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v6 M4.6 4.2a5 5 0 1 0 6.8 0"></path></svg></button>
+</div>
+
+<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:7px;cursor:grab;border:1px solid transparent;">
+<svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true" fill="#5B6473"><circle cx="3" cy="4" r="1.2"></circle><circle cx="7" cy="4" r="1.2"></circle><circle cx="3" cy="8" r="1.2"></circle><circle cx="7" cy="8" r="1.2"></circle><circle cx="3" cy="12" r="1.2"></circle><circle cx="7" cy="12" r="1.2"></circle></svg>
+<span style="width:8px;height:8px;border-radius:2px;flex:none;background:#F5A524"></span>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px"><span style="font:500 13px Inter,sans-serif;color:#E7EAF0">Compresor</span><span style="font:400 10px Inter,sans-serif;color:#8A93A3">Bus · −3,2 dB</span></div>
+<button class="ico" style="width:24px;height:24px;color:#5EE6C4" aria-label="Apagar Compresor"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v6 M4.6 4.2a5 5 0 1 0 6.8 0"></path></svg></button>
+</div>
+
+<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:7px;cursor:grab;border:1px solid transparent;">
+<svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true" fill="#5B6473"><circle cx="3" cy="4" r="1.2"></circle><circle cx="7" cy="4" r="1.2"></circle><circle cx="3" cy="8" r="1.2"></circle><circle cx="7" cy="8" r="1.2"></circle><circle cx="3" cy="12" r="1.2"></circle><circle cx="7" cy="12" r="1.2"></circle></svg>
+<span style="width:8px;height:8px;border-radius:2px;flex:none;background:#FF7A59"></span>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px"><span style="font:500 13px Inter,sans-serif;color:#E7EAF0">Saturación</span><span style="font:400 10px Inter,sans-serif;color:#8A93A3">3 bandas</span></div>
+<button class="ico" style="width:24px;height:24px;color:#5EE6C4" aria-label="Apagar Saturación"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v6 M4.6 4.2a5 5 0 1 0 6.8 0"></path></svg></button>
+</div>
+
+<div style="display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:7px;cursor:grab;border:1px solid transparent;">
+<svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true" fill="#5B6473"><circle cx="3" cy="4" r="1.2"></circle><circle cx="7" cy="4" r="1.2"></circle><circle cx="3" cy="8" r="1.2"></circle><circle cx="7" cy="8" r="1.2"></circle><circle cx="3" cy="12" r="1.2"></circle><circle cx="7" cy="12" r="1.2"></circle></svg>
+<span style="width:8px;height:8px;border-radius:2px;flex:none;background:#E85D9C"></span>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px"><span style="font:500 13px Inter,sans-serif;color:#8A93A3">Distorsión</span><span style="font:400 10px Inter,sans-serif;color:#8A93A3">Apagado</span></div>
+<button class="ico" style="width:24px;height:24px;color:#5B6473" aria-label="Encender Distorsión"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M8 2v6 M4.6 4.2a5 5 0 1 0 6.8 0"></path></svg></button>
+</div>
+
+<div style="display:flex;align-items:center;gap:6px;padding:2px 6px"><span class="val" style="color:#8A93A3">OUT</span><span style="flex:1;height:1px;background:#2A303B"></span></div>
+<div style="flex:1"></div>
+<p style="margin:0;font:400 11px Inter,sans-serif;color:#8A93A3;line-height:1.45;padding:10px 6px 0;border-top:1px solid #222831">Arrastra desde el asa para cambiar el orden. Clic para abrir el módulo.</p>
+</aside>
+
+<main style="flex:1;min-width:0;display:flex;flex-direction:column;padding:14px 16px;gap:10px;box-sizing:border-box">
+<div style="display:flex;align-items:center;gap:10px">
+<span style="width:10px;height:10px;border-radius:3px;background:#5EE6C4"></span>
+<h1 style="margin:0;font:600 16px 'Space Grotesk',sans-serif">EQ</h1>
+<span style="font:400 12px Inter,sans-serif;color:#8A93A3">5 de 8 bandas · latencia cero</span>
+<div style="flex:1"></div>
+<span class="lbl">Carácter</span>
+<div class="seg"><button class="on">Clean</button><button>Subtle</button><button>Warm</button></div>
+<span class="lbl" style="margin-left:6px">Analizador</span>
+<div class="seg"><button>Pre</button><button class="on">Post</button><button>Off</button></div>
+<div class="seg"><button class="on">±12</button><button>±30</button></div>
+</div>
+
+<div style="position:relative;height:300px;flex:none;border-radius:8px;background:#0B0D11;border:1px solid #222831;overflow:hidden">
+<svg width="786" height="298" viewBox="0 0 786 298" aria-hidden="true" style="display:block">
+<g stroke="#1A1F27" stroke-width="1">
+<line x1="104" y1="0" x2="104" y2="298"></line><line x1="183" y1="0" x2="183" y2="298"></line><line x1="262" y1="0" x2="262" y2="298"></line><line x1="366" y1="0" x2="366" y2="298"></line><line x1="445" y1="0" x2="445" y2="298"></line><line x1="524" y1="0" x2="524" y2="298"></line><line x1="628" y1="0" x2="628" y2="298"></line><line x1="707" y1="0" x2="707" y2="298"></line>
+<line x1="0" y1="17" x2="786" y2="17"></line><line x1="0" y1="83" x2="786" y2="83"></line><line x1="0" y1="215" x2="786" y2="215"></line><line x1="0" y1="281" x2="786" y2="281"></line>
+</g>
+<line x1="0" y1="149" x2="786" y2="149" stroke="#2A303B" stroke-width="1"></line>
+<path d="M0 298 L0 232 C40 160 90 118 140 126 C190 134 220 104 262 140 C302 168 340 152 382 166 C432 184 472 170 522 190 C572 206 622 200 662 220 C702 236 742 250 786 262 L786 298 Z" fill="#5EE6C4" fill-opacity=".10"></path>
+<path d="M0 232 C40 160 90 118 140 126 C190 134 220 104 262 140 C302 168 340 152 382 166 C432 184 472 170 522 190 C572 206 622 200 662 220 C702 236 742 250 786 262" fill="none" stroke="#5EE6C4" stroke-opacity=".35" stroke-width="1"></path>
+<path d="M300 149 C320 149 328 194 340 194 C352 194 360 149 380 149" fill="#5EE6C4" fill-opacity=".14" stroke="#5EE6C4" stroke-width="1" stroke-dasharray="3 3"></path>
+<path d="M0 296 C18 250 34 165 62 152 C110 146 150 116 203 116 C252 116 276 148 300 152 C322 156 330 194 340 194 C350 194 358 166 380 156 C430 150 520 150 600 145 C640 141 662 124 702 122 L786 122" fill="none" stroke="#5EE6C4" stroke-width="2.2" stroke-linecap="round"></path>
+<g font-family="JetBrains Mono" font-size="10" fill="#7C8595">
+<text x="100" y="292">50</text><text x="176" y="292">100</text><text x="255" y="292">200</text><text x="359" y="292">500</text><text x="440" y="292">1k</text><text x="519" y="292">2k</text><text x="623" y="292">5k</text><text x="699" y="292">10k</text>
+<text x="758" y="21">+12</text><text x="762" y="87">+6</text><text x="770" y="146">0</text><text x="764" y="212">−6</text><text x="758" y="278">−12</text>
+</g>
+<g font-family="Inter" font-size="10" font-weight="600" text-anchor="middle">
+<circle cx="46" cy="149" r="9" fill="#0B0D11" stroke="#5EE6C4" stroke-width="1.6"></circle><text x="46" y="152.5" fill="#E7EAF0">1</text>
+<circle cx="203" cy="116" r="9" fill="#0B0D11" stroke="#5EE6C4" stroke-width="1.6"></circle><text x="203" y="119.5" fill="#E7EAF0">2</text>
+<circle cx="340" cy="194" r="15" fill="#5EE6C4" fill-opacity=".18"></circle><circle cx="340" cy="194" r="10" fill="#5EE6C4"></circle><text x="340" y="197.5" fill="#0B0D11">3</text>
+<circle cx="545" cy="149" r="9" fill="#0B0D11" stroke="#5B6473" stroke-width="1.6" stroke-dasharray="2 2"></circle><text x="545" y="152.5" fill="#8A93A3">4</text>
+<circle cx="680" cy="122" r="9" fill="#0B0D11" stroke="#5EE6C4" stroke-width="1.6"></circle><text x="680" y="125.5" fill="#E7EAF0">5</text>
+</g>
+<g>
+<rect x="358" y="206" width="132" height="22" rx="5" fill="#1D222B" stroke="#2A303B"></rect>
+<text x="368" y="221" font-family="JetBrains Mono" font-size="10.5" fill="#E7EAF0">400 Hz · −4,0 dB</text>
+</g>
+</svg>
+<p style="position:absolute;left:12px;top:8px;margin:0;font:400 11px Inter,sans-serif;color:#8A93A3">Doble clic: nueva banda · Rueda: Q · Alt+clic: bypass de banda</p>
+</div>
+
+<div style="display:flex;align-items:center;gap:14px;padding:10px 14px;background:#161A21;border:1px solid #2A303B;border-radius:8px">
+<div style="display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:center;gap:8px"><span style="width:20px;height:20px;border-radius:10px;background:#5EE6C4;color:#0B0D11;font:600 11px Inter,sans-serif;display:inline-flex;align-items:center;justify-content:center">3</span><span style="font:500 13px Inter,sans-serif">Banda 3 · Campana</span></div>
+<div style="display:flex;gap:2px;background:#0F1115;border:1px solid #2A303B;border-radius:6px;padding:2px">
+<button class="shape" aria-label="Campana" style="background:#2A303B;color:#5EE6C4"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M1 12C5 12 6 4 8 4s3 8 7 8"></path></svg></button>
+<button class="shape" aria-label="Shelf grave"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M1 5h4c3 0 3 6 6 6h4"></path></svg></button>
+<button class="shape" aria-label="Shelf agudo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M1 11h4c3 0 3-6 6-6h4"></path></svg></button>
+<button class="shape" aria-label="Corte de graves"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2 14C4 6 6 5 9 5h6"></path></svg></button>
+<button class="shape" aria-label="Corte de agudos"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M1 5h6c3 0 5 1 7 9"></path></svg></button>
+<button class="shape" aria-label="Notch"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 5h5l2 9 2-9h5"></path></svg></button>
+<button class="shape" aria-label="Pasa-banda"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M1 14C5 14 6 5 8 5s3 9 7 9"></path></svg></button>
+<button class="shape" aria-label="Tilt"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M1 11 15 5"></path></svg></button>
+</div>
+</div>
+<div style="width:1px;align-self:stretch;background:#2A303B"></div>
+
+<button class="knob" aria-label="Frecuencia 400 Hz">
+<svg width="46" height="46" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17" fill="none" stroke="#2A303B" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="80.1 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="17" fill="none" stroke="#5EE6C4" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="34.4 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="11.5" fill="#232833" stroke="#323946"></circle><line x1="22" y1="22" x2="19.1" y2="13.5" stroke="#E7EAF0" stroke-width="2" stroke-linecap="round"></line></svg>
+<span class="val">400 Hz</span>
+<span class="lbl">Frecuencia</span>
+</button>
+
+<button class="knob" aria-label="Ganancia −4,0 dB">
+<svg width="46" height="46" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17" fill="none" stroke="#2A303B" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="80.1 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="17" fill="none" stroke="#5EE6C4" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="34.4 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="11.5" fill="#232833" stroke="#323946"></circle><line x1="22" y1="22" x2="19.1" y2="13.5" stroke="#E7EAF0" stroke-width="2" stroke-linecap="round"></line></svg>
+<span class="val">−4,0 dB</span>
+<span class="lbl">Ganancia</span>
+</button>
+
+<button class="knob" aria-label="Q 2,50">
+<svg width="46" height="46" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17" fill="none" stroke="#2A303B" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="80.1 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="17" fill="none" stroke="#5EE6C4" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="28.0 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="11.5" fill="#232833" stroke="#323946"></circle><line x1="22" y1="22" x2="16.2" y2="15.2" stroke="#E7EAF0" stroke-width="2" stroke-linecap="round"></line></svg>
+<span class="val">2,50</span>
+<span class="lbl">Q</span>
+</button>
+
+<button class="knob" aria-label="Pendiente 12 dB/oct">
+<svg width="46" height="46" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17" fill="none" stroke="#2A303B" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="80.1 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="17" fill="none" stroke="#5EE6C4" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="9.6 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="11.5" fill="#232833" stroke="#323946"></circle><line x1="22" y1="22" x2="13.2" y2="24.0" stroke="#E7EAF0" stroke-width="2" stroke-linecap="round"></line></svg>
+<span class="val">12 dB/oct</span>
+<span class="lbl">Pendiente</span>
+</button>
+
+<div style="flex:1"></div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<button class="btn">Solo</button>
+<button class="btn">Bypass</button>
+</div>
+<button class="ico" aria-label="Eliminar banda"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 4.5h10 M6.5 4.5V3h3v1.5 M4.5 4.5l.7 9h5.6l.7-9"></path></svg></button>
+</div>
+</main>
+</div>
+
+<footer style="height:64px;flex:none;display:flex;align-items:center;gap:12px;padding:0 14px;border-top:1px solid #222831;background:#13161C">
+<div style="display:flex;align-items:center;gap:8px">
+<svg width="32" height="32" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17" fill="none" stroke="#2A303B" stroke-width="4" stroke-linecap="round" stroke-dasharray="80.1 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="17" fill="none" stroke="#5EE6C4" stroke-width="4" stroke-linecap="round" stroke-dasharray="40 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="11" fill="#232833"></circle></svg>
+<div style="display:flex;flex-direction:column;gap:4px">
+<span style="display:flex;gap:6px;align-items:baseline"><span class="lbl">Entrada</span><span class="val">0,0 dB</span></span>
+<div style="width:96px;height:4px;border-radius:2px;background:#222831"><div style="width:64%;height:100%;border-radius:2px;background:#5EE6C4"></div></div>
+<div style="width:96px;height:4px;border-radius:2px;background:#222831"><div style="width:60%;height:100%;border-radius:2px;background:#5EE6C4"></div></div>
+</div>
+</div>
+<div style="width:1px;height:32px;background:#2A303B"></div>
+<div style="display:flex;align-items:center;gap:8px">
+<svg width="32" height="32" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17" fill="none" stroke="#2A303B" stroke-width="4" stroke-linecap="round" stroke-dasharray="80.1 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="17" fill="none" stroke="#5EE6C4" stroke-width="4" stroke-linecap="round" stroke-dasharray="80.1 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="11" fill="#232833"></circle></svg>
+<div style="display:flex;flex-direction:column"><span class="lbl">Mix global</span><span class="val">100 %</span></div>
+</div>
+<button class="btn"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M2 8h3 M11 8h3 M5 5v6 M11 5v6 M8 3v10"></path></svg>Comparar a igual volumen</button>
+<div style="display:flex;align-items:center;gap:8px">
+<button aria-label="Clipper de seguridad activado" style="all:unset;width:30px;height:16px;border-radius:8px;background:#5EE6C4;position:relative;cursor:pointer"><span style="position:absolute;top:2px;left:16px;width:12px;height:12px;border-radius:6px;background:#0F1115"></span></button>
+<span style="font:500 12px Inter,sans-serif;color:#C9CED8">Clipper</span>
+</div>
+<button class="btn">Calidad 2x / 8x</button>
+<div style="flex:1"></div>
+<span class="val" style="color:#8A93A3">Latencia 2,3 ms</span>
+<div style="width:1px;height:32px;background:#2A303B"></div>
+<div style="display:flex;align-items:center;gap:8px">
+<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+<span style="display:flex;gap:6px;align-items:baseline"><span class="lbl">Salida</span><span class="val">−1,5 dB</span></span>
+<div style="width:96px;height:4px;border-radius:2px;background:#222831"><div style="width:78%;height:100%;border-radius:2px;background:#5EE6C4"></div></div>
+<div style="width:96px;height:4px;border-radius:2px;background:#222831"><div style="width:74%;height:100%;border-radius:2px;background:#5EE6C4"></div></div>
+</div>
+<svg width="32" height="32" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17" fill="none" stroke="#2A303B" stroke-width="4" stroke-linecap="round" stroke-dasharray="80.1 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="17" fill="none" stroke="#5EE6C4" stroke-width="4" stroke-linecap="round" stroke-dasharray="36 106.8" transform="rotate(135 22 22)"></circle><circle cx="22" cy="22" r="11" fill="#232833"></circle></svg>
+</div>
+</footer>
+</div>
+</body></html>

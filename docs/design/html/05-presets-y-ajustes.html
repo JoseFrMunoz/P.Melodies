@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<title>P.Melodies — Presets y ajustes</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Space+Grotesk:wght@500;600&amp;display=swap" rel="stylesheet"><style>
+body{margin:0;background:#0B0D11}
+a{color:#5EE6C4}a:hover{color:#9CF0DA}
+.btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;padding:0 10px;border-radius:6px;background:#1D222B;border:1px solid #2A303B;color:#C9CED8;font:500 12px Inter,sans-serif;cursor:pointer;white-space:nowrap}
+.ico{all:unset;box-sizing:border-box;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;color:#8A93A3;cursor:pointer}
+.lbl{font:500 10px Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#8A93A3}
+.val{font:500 11px 'JetBrains Mono',monospace;color:#E7EAF0}
+.seg{display:inline-flex;background:#0F1115;border:1px solid #2A303B;border-radius:6px;padding:2px;gap:2px}
+.seg button{all:unset;padding:3px 9px;border-radius:4px;font:500 11px Inter,sans-serif;color:#8A93A3;cursor:pointer}
+.seg button.on{background:#2A303B;color:#E7EAF0}
+</style></head>
+<body>
+
+<div style="width:1000px;height:640px;display:flex;flex-direction:column;background:#0F1115;color:#E7EAF0;font-family:Inter,sans-serif;overflow:hidden">
+
+<header style="height:48px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid #222831;background:#13161C">
+<div style="display:flex;align-items:center;gap:8px;width:166px">
+<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9.5" fill="none" stroke="#5EE6C4" stroke-width="1.6" stroke-dasharray="44 16" stroke-linecap="round"></circle><text x="11" y="15" text-anchor="middle" font-family="Space Grotesk" font-weight="600" font-size="11" fill="#E7EAF0">P</text></svg>
+<span style="font:600 15px 'Space Grotesk',sans-serif">P.Melodies</span>
+</div>
+<div style="display:flex;align-items:center;gap:4px">
+<button class="ico" aria-label="Preset anterior"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4 6 8l4 4"></path></svg></button>
+<button class="btn" style="width:230px;justify-content:space-between;border-color:#5EE6C4"><span><span style="color:#8A93A3">Melodía /</span> Pluck brillante</span><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 10l4-4 4 4"></path></svg></button>
+<button class="ico" aria-label="Preset siguiente"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"></path></svg></button>
+<button class="ico" aria-label="Guardar preset"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h8l2 2v8H3z M5.5 3v3h5V3 M5.5 13V9.5h5V13"></path></svg></button>
+</div>
+<div style="flex:1"></div>
+<div class="seg"><button class="on">A</button><button>B</button></div>
+<button class="ico" aria-label="Copiar A en B"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"></rect><path d="M10.5 3.5V3a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h.5"></path></svg></button>
+<div style="width:1px;height:20px;background:#2A303B"></div>
+<button class="ico" aria-label="Deshacer"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4 2 7l3 3 M2 7h8a3.5 3.5 0 0 1 0 7H8"></path></svg></button>
+<button class="ico" aria-label="Rehacer"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4l3 3-3 3 M14 7H6a3.5 3.5 0 0 0 0 7h2"></path></svg></button>
+<div style="width:1px;height:20px;background:#2A303B"></div>
+<button class="ico" aria-label="Tema de aspecto"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M8 1.8a6.2 6.2 0 1 0 0 12.4c1 0 1.4-.7 1.1-1.5-.4-1 .2-1.9 1.3-1.9h1.6a2.2 2.2 0 0 0 2.2-2.2A6.6 6.6 0 0 0 8 1.8z"></path><circle cx="5" cy="7" r=".9" fill="currentColor"></circle><circle cx="8" cy="4.8" r=".9" fill="currentColor"></circle><circle cx="11" cy="7" r=".9" fill="currentColor"></circle></svg></button>
+<button class="ico" aria-label="Ajustes" style="background:#2A303B;color:#E7EAF0"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="2.2"></circle><path d="M8 1.5v2 M8 12.5v2 M1.5 8h2 M12.5 8h2 M3.4 3.4l1.4 1.4 M11.2 11.2l1.4 1.4 M3.4 12.6l1.4-1.4 M11.2 4.8l1.4-1.4"></path></svg></button>
+</header>
+
+<div style="flex:1;min-height:0;display:flex;gap:14px;padding:14px;background:#090B0E;box-sizing:border-box">
+
+<section style="flex:1;min-width:0;display:flex;flex-direction:column;background:#161A21;border:1px solid #2A303B;border-radius:10px;overflow:hidden">
+<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #2A303B">
+<h2 style="margin:0;font:600 15px 'Space Grotesk',sans-serif">Presets</h2>
+<div style="flex:1"></div>
+<label style="display:flex;align-items:center;gap:6px;height:30px;padding:0 10px;width:240px;box-sizing:border-box;border-radius:6px;background:#0F1115;border:1px solid #2A303B">
+<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#8A93A3" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5 14 14"></path></svg>
+<span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Buscar presets</span>
+<input placeholder="Buscar presets" style="color-scheme: unset; forced-color-adjust: unset; math-depth: unset; position: unset; position-anchor: unset; text-size-adjust: unset; appearance: unset; font-palette: unset; font-synthesis: unset; position-area: unset; text-orientation: unset; text-rendering: unset; text-spacing-trim: unset; -webkit-font-smoothing: unset; -webkit-locale: unset; -webkit-text-orientation: unset; -webkit-writing-mode: unset; writing-mode: unset; zoom: unset; accent-color: unset; place-content: unset; place-items: unset; place-self: unset; alignment-baseline: unset; anchor-name: unset; anchor-scope: unset; animation-composition: unset; animation: unset; animation-trigger: unset; app-region: unset; aspect-ratio: unset; backdrop-filter: unset; backface-visibility: unset; background: unset; background-blend-mode: unset; baseline-shift: unset; baseline-source: unset; block-size: unset; border-block: unset; border: unset; border-radius: unset; border-collapse: unset; border-end-end-radius: unset; border-end-start-radius: unset; border-inline: unset; border-shape: unset; border-start-end-radius: unset; border-start-start-radius: unset; inset: unset; box-decoration-break: unset; box-shadow: unset; box-sizing: unset; break-after: unset; break-before: unset; break-inside: unset; buffered-rendering: unset; caption-side: unset; caret-animation: unset; caret-shape: unset; clear: unset; clip: unset; clip-path: unset; clip-rule: unset; color-interpolation: unset; color-interpolation-filters: unset; color-rendering: unset; columns: unset; column-fill: unset; gap: unset; rule-break: unset; rule: unset; rule-inset: unset; rule-visibility-items: unset; column-span: unset; contain: unset; contain-intrinsic-block-size: unset; contain-intrinsic-size: unset; contain-intrinsic-inline-size: unset; container: unset; content: unset; content-visibility: unset; corner-shape: unset; corner-block-end-shape: unset; corner-block-start-shape: unset; counter-increment: unset; counter-reset: unset; counter-set: unset; cursor: unset; cx: unset; cy: unset; d: unset; display: unset; dominant-baseline: unset; dynamic-range-limit: unset; empty-cells: unset; field-sizing: unset; fill: unset; fill-opacity: unset; fill-rule: unset; filter: unset; flex-flow: unset; flex-line-count: unset; float: unset; flood-color: unset; flood-opacity: unset; grid: unset; grid-area: unset; height: unset; hyphenate-character: unset; hyphenate-limit-chars: unset; hyphens: unset; image-orientation: unset; image-rendering: unset; initial-letter: unset; inline-size: unset; inset-block: unset; inset-inline: unset; interactivity: unset; interest-delay: unset; interpolate-size: unset; isolation: unset; letter-spacing: unset; lighting-color: unset; line-break: unset; list-style: unset; margin-block: unset; margin: unset; margin-inline: unset; marker: unset; mask: unset; mask-type: unset; math-shift: unset; math-style: unset; max-block-size: unset; max-height: unset; max-inline-size: unset; max-width: unset; min-block-size: unset; min-height: unset; min-inline-size: unset; min-width: unset; mix-blend-mode: unset; object-fit: unset; object-position: unset; object-view-box: unset; offset: unset; opacity: unset; order: unset; orphans: unset; outline: unset; outline-offset: unset; overflow-anchor: unset; overflow-block: unset; overflow-clip-margin: unset; overflow-inline: unset; overflow-wrap: unset; overflow: unset; overlay: unset; overscroll-behavior-block: unset; overscroll-behavior-inline: unset; overscroll-behavior: unset; padding-block: unset; padding: unset; padding-inline: unset; page: unset; page-margin-safety: unset; page-orientation: unset; paint-order: unset; perspective: unset; perspective-origin: unset; pointer-events: unset; position-try: unset; position-visibility: unset; print-color-adjust: unset; quotes: unset; r: unset; reading-flow: unset; reading-order: unset; resize: unset; rotate: unset; ruby-align: unset; ruby-overhang: unset; ruby-position: unset; rule-overlap: unset; rx: unset; ry: unset; scale: unset; scroll-axis-lock: unset; scroll-behavior: unset; scroll-initial-target: unset; scroll-margin-block: unset; scroll-margin: unset; scroll-margin-inline: unset; scroll-marker-group: unset; scroll-padding-block: unset; scroll-padding: unset; scroll-padding-inline: unset; scroll-snap-align: unset; scroll-snap-stop: unset; scroll-snap-type: unset; scroll-target-group: unset; scroll-timeline: unset; scrollbar-color: unset; scrollbar-gutter: unset; scrollbar-width: unset; shape-image-threshold: unset; shape-margin: unset; shape-outside: unset; shape-rendering: unset; size: unset; speak: unset; stop-color: unset; stop-opacity: unset; stroke: unset; stroke-dasharray: unset; stroke-dashoffset: unset; stroke-linecap: unset; stroke-linejoin: unset; stroke-miterlimit: unset; stroke-opacity: unset; stroke-width: unset; tab-size: unset; table-layout: unset; text-align: unset; text-align-last: unset; text-anchor: unset; text-autospace: unset; text-box: unset; text-combine-upright: unset; text-decoration: unset; text-decoration-skip-ink: unset; text-emphasis: unset; text-emphasis-position: unset; text-fit: unset; text-indent: unset; text-justify: unset; text-overflow: unset; text-shadow: unset; text-transform: unset; text-underline-offset: unset; text-underline-position: unset; text-wrap: unset; timeline-scope: unset; timeline-trigger: unset; touch-action: unset; transform: unset; transform-box: unset; transform-origin: unset; transform-style: unset; transition: unset; translate: unset; trigger-scope: unset; user-select: unset; vector-effect: unset; vertical-align: unset; view-timeline: unset; view-transition-class: unset; view-transition-group: unset; view-transition-name: unset; view-transition-scope: unset; visibility: unset; border-spacing: unset; -webkit-box-align: unset; -webkit-box-decoration-break: unset; -webkit-box-direction: unset; -webkit-box-flex: unset; -webkit-box-ordinal-group: unset; -webkit-box-orient: unset; -webkit-box-pack: unset; -webkit-box-reflect: unset; -webkit-line-break: unset; -webkit-line-clamp: unset; -webkit-mask-box-image: unset; -webkit-rtl-ordering: unset; -webkit-ruby-position: unset; -webkit-tap-highlight-color: unset; -webkit-text-combine: unset; -webkit-text-decorations-in-effect: unset; -webkit-text-fill-color: unset; -webkit-text-security: unset; -webkit-text-stroke: unset; -webkit-user-drag: unset; white-space-collapse: unset; widows: unset; width: unset; will-change: unset; window-drag: unset; word-break: unset; word-spacing: unset; x: unset; y: unset; z-index: unset; flex: 1 1 0%; font: 400 12px Inter, sans-serif; color: rgb(231, 234, 240); caret-color: unset;">
+</label>
+</div>
+<div style="flex:1;min-height:0;display:flex">
+<nav style="width:170px;flex:none;border-right:1px solid #2A303B;padding:10px 8px;display:flex;flex-direction:column;gap:2px">
+
+<button style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:5px;font:500 12px Inter,sans-serif;color:#A9B0BC;"><span>Todos</span><span class="val" style="color:#8A93A3">24</span></button>
+
+<button style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:5px;font:500 12px Inter,sans-serif;color:#A9B0BC;"><span>Favoritos</span><span class="val" style="color:#8A93A3">3</span></button>
+
+<button style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:5px;font:500 12px Inter,sans-serif;color:#A9B0BC;"><span>Init</span><span class="val" style="color:#8A93A3">1</span></button>
+
+<button style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:5px;font:500 12px Inter,sans-serif;color:#A9B0BC;"><span>Voz</span><span class="val" style="color:#8A93A3">5</span></button>
+
+<button style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:5px;font:500 12px Inter,sans-serif;color:#A9B0BC;"><span>808</span><span class="val" style="color:#8A93A3">4</span></button>
+
+<button style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:5px;font:500 12px Inter,sans-serif;background:#2A303B;color:#E7EAF0;"><span>Melodía</span><span class="val" style="color:#8A93A3">6</span></button>
+
+<button style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:5px;font:500 12px Inter,sans-serif;color:#A9B0BC;"><span>Bus de batería</span><span class="val" style="color:#8A93A3">4</span></button>
+
+<button style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-radius:5px;font:500 12px Inter,sans-serif;color:#A9B0BC;"><span>Míos</span><span class="val" style="color:#8A93A3">1</span></button>
+
+</nav>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 40px;padding:8px 14px;border-bottom:1px solid #222831"><span class="lbl">Nombre</span><span class="lbl">Categoría</span><span class="lbl"></span></div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 40px;align-items:center;padding:7px 14px;border-bottom:1px solid #1D222B;background:#1F2A2A;box-shadow:inset 3px 0 0 #5EE6C4;">
+<span style="font:500 13px Inter,sans-serif;color:#E7EAF0">Pluck brillante</span>
+<span style="font:400 12px Inter,sans-serif;color:#8A93A3">Melodía</span>
+<button class="ico" style="width:24px;height:24px;color:#F5A524" aria-label="Marcar como favorito"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2 4.3 13.2l.8-4.1-3-2.8 4.1-.5z"></path></svg></button>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 40px;align-items:center;padding:7px 14px;border-bottom:1px solid #1D222B;">
+<span style="font:500 13px Inter,sans-serif;color:#C9CED8">Pad cálido</span>
+<span style="font:400 12px Inter,sans-serif;color:#8A93A3">Melodía</span>
+<button class="ico" style="width:24px;height:24px;color:#5B6473" aria-label="Marcar como favorito"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2 4.3 13.2l.8-4.1-3-2.8 4.1-.5z"></path></svg></button>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 40px;align-items:center;padding:7px 14px;border-bottom:1px solid #1D222B;">
+<span style="font:500 13px Inter,sans-serif;color:#C9CED8">Lead con cuerpo</span>
+<span style="font:400 12px Inter,sans-serif;color:#8A93A3">Melodía</span>
+<button class="ico" style="width:24px;height:24px;color:#F5A524" aria-label="Marcar como favorito"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2 4.3 13.2l.8-4.1-3-2.8 4.1-.5z"></path></svg></button>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 40px;align-items:center;padding:7px 14px;border-bottom:1px solid #1D222B;">
+<span style="font:500 13px Inter,sans-serif;color:#C9CED8">Piano lo-fi</span>
+<span style="font:400 12px Inter,sans-serif;color:#8A93A3">Melodía</span>
+<button class="ico" style="width:24px;height:24px;color:#5B6473" aria-label="Marcar como favorito"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2 4.3 13.2l.8-4.1-3-2.8 4.1-.5z"></path></svg></button>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 40px;align-items:center;padding:7px 14px;border-bottom:1px solid #1D222B;">
+<span style="font:500 13px Inter,sans-serif;color:#C9CED8">Arpegio limpio</span>
+<span style="font:400 12px Inter,sans-serif;color:#8A93A3">Melodía</span>
+<button class="ico" style="width:24px;height:24px;color:#5B6473" aria-label="Marcar como favorito"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2 4.3 13.2l.8-4.1-3-2.8 4.1-.5z"></path></svg></button>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 40px;align-items:center;padding:7px 14px;border-bottom:1px solid #1D222B;">
+<span style="font:500 13px Inter,sans-serif;color:#C9CED8">Campanas aireadas</span>
+<span style="font:400 12px Inter,sans-serif;color:#8A93A3">Melodía</span>
+<button class="ico" style="width:24px;height:24px;color:#5B6473" aria-label="Marcar como favorito"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2 4.3 13.2l.8-4.1-3-2.8 4.1-.5z"></path></svg></button>
+</div>
+
+<div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 40px;align-items:center;padding:7px 14px;border-bottom:1px solid #1D222B;">
+<span style="font:500 13px Inter,sans-serif;color:#C9CED8">Guitarra con grano</span>
+<span style="font:400 12px Inter,sans-serif;color:#8A93A3">Melodía</span>
+<button class="ico" style="width:24px;height:24px;color:#5B6473" aria-label="Marcar como favorito"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2 4.3 13.2l.8-4.1-3-2.8 4.1-.5z"></path></svg></button>
+</div>
+
+</div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #2A303B">
+<button class="btn" style="background:#5EE6C4;color:#0B0D11;border-color:#5EE6C4">Guardar como…</button>
+<button class="btn">Importar</button>
+<button class="btn">Abrir carpeta</button>
+<div style="flex:1"></div>
+<span style="font:400 11px Inter,sans-serif;color:#8A93A3;text-align:right">Doble clic para cargar<br>Los de fábrica no se sobrescriben</span>
+</div>
+</section>
+
+<section style="width:330px;flex:none;display:flex;flex-direction:column;gap:14px;padding:14px;background:#161A21;border:1px solid #2A303B;border-radius:10px;box-sizing:border-box">
+<div style="display:flex;align-items:center"><h2 style="margin:0;font:600 15px 'Space Grotesk',sans-serif">Ajustes</h2><div style="flex:1"></div><button class="ico" aria-label="Cerrar ajustes"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 4l8 8 M12 4l-8 8"></path></svg></button></div>
+
+<div style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Tamaño de ventana</span><div class="seg" style="align-self:flex-start"><button>75 %</button><button class="on">100 %</button><button>125 %</button><button>150 %</button></div></div>
+
+<div style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Tema</span>
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">
+
+<button style="all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-radius:6px;color:#C9CED8;border:1px solid #5EE6C4;background:#1D222B;" aria-label="Tema Oscuro"><span style="display:flex;gap:2px"><span style="width:12px;height:16px;border-radius:2px;background:#0F1115"></span><span style="width:12px;height:16px;border-radius:2px;background:#1D222B"></span><span style="width:12px;height:16px;border-radius:2px;background:#5EE6C4"></span></span><span style="font:500 11px Inter,sans-serif">Oscuro</span></button>
+
+<button style="all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-radius:6px;color:#C9CED8;border:1px solid #2A303B;" aria-label="Tema Claro"><span style="display:flex;gap:2px"><span style="width:12px;height:16px;border-radius:2px;background:#F4F5F7"></span><span style="width:12px;height:16px;border-radius:2px;background:#FFFFFF"></span><span style="width:12px;height:16px;border-radius:2px;background:#0E8C74"></span></span><span style="font:500 11px Inter,sans-serif">Claro</span></button>
+
+<button style="all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-radius:6px;color:#C9CED8;border:1px solid #2A303B;" aria-label="Tema Neón"><span style="display:flex;gap:2px"><span style="width:12px;height:16px;border-radius:2px;background:#120B24"></span><span style="width:12px;height:16px;border-radius:2px;background:#2B1650"></span><span style="width:12px;height:16px;border-radius:2px;background:#FF4FD8"></span></span><span style="font:500 11px Inter,sans-serif">Neón</span></button>
+
+<button style="all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;padding:8px 4px;border-radius:6px;color:#C9CED8;border:1px solid #2A303B;" aria-label="Tema Vintage"><span style="display:flex;gap:2px"><span style="width:12px;height:16px;border-radius:2px;background:#2B231A"></span><span style="width:12px;height:16px;border-radius:2px;background:#E9DCC3"></span><span style="width:12px;height:16px;border-radius:2px;background:#D9822B"></span></span><span style="font:500 11px Inter,sans-serif">Vintage</span></button>
+
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px"><span class="lbl">Calidad (oversampling global)</span>
+<div style="display:flex;align-items:center;gap:8px"><span style="width:110px;font:400 12px Inter,sans-serif;color:#C9CED8">Al reproducir</span><div class="seg"><button>Off</button><button class="on">2x</button><button>4x</button></div></div>
+<div style="display:flex;align-items:center;gap:8px"><span style="width:110px;font:400 12px Inter,sans-serif;color:#C9CED8">Al exportar</span><div class="seg"><button>2x</button><button>4x</button><button class="on">8x</button><button>16x</button></div></div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:8px"><span class="lbl">Seguridad y ayuda</span>
+<div style="display:flex;align-items:center;gap:8px"><button aria-label="Clipper de seguridad activado" style="all:unset;width:30px;height:16px;border-radius:8px;background:#5EE6C4;position:relative;cursor:pointer"><span style="position:absolute;top:2px;left:16px;width:12px;height:12px;border-radius:6px;background:#0F1115"></span></button><span style="flex:1;font:400 12px Inter,sans-serif;color:#C9CED8">Clipper de seguridad</span><span class="val">techo −0,3 dB</span></div>
+<div style="display:flex;align-items:center;gap:8px"><button aria-label="Tooltips activados" style="all:unset;width:30px;height:16px;border-radius:8px;background:#5EE6C4;position:relative;cursor:pointer"><span style="position:absolute;top:2px;left:16px;width:12px;height:12px;border-radius:6px;background:#0F1115"></span></button><span style="flex:1;font:400 12px Inter,sans-serif;color:#C9CED8">Tooltips de ayuda</span></div>
+</div>
+
+<div style="flex:1"></div>
+<p style="margin:0;font:400 11px Inter,sans-serif;color:#8A93A3;line-height:1.5;border-top:1px solid #2A303B;padding-top:10px">P.Melodies v1.0.0 · código abierto (AGPLv3) · <a href="https://github.com/">Ver en GitHub</a></p>
+</section>
+</div>
+</div>
+</body></html>
