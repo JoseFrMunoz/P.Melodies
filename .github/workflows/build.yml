@@ -131,6 +131,14 @@ jobs:
       - name: Unit tests
         run: ctest --test-dir build -C Release --output-on-failure
 
+      # Informative for now: the table goes to the run summary. It becomes a budget check in phase 6.
+      - name: CPU use (informative)
+        shell: pwsh
+        run: |
+          $env:PM_CPU_REPORT = $env:GITHUB_STEP_SUMMARY
+          ./build/Tests.exe "[.cpu]"
+          exit $LASTEXITCODE
+
       - name: Download pluginval
         shell: pwsh
         run: |
