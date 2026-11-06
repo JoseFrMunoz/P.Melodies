@@ -41,6 +41,11 @@ jobs:
     name: Windows · VST3, tests, pluginval
     runs-on: windows-latest
     timeout-minutes: 90
+    env:
+      # Identify the compiler by its content rather than its file date and size (ccache's
+      # default), which did not give a single hit from one Windows runner to the next.
+      CCACHE_COMPILERCHECK: content
+      CCACHE_LOGFILE: ${{ github.workspace }}/ccache.log
     steps:
       - uses: actions/checkout@v5
 
@@ -56,6 +61,9 @@ jobs:
           Set-Content -Path $script -Value "@call `"$vs\VC\Auxiliary\Build\vcvars64.bat`" >nul 2>&1`r`n@set"
           $vars = & cmd.exe /d /c $script
           if (-not ($vars -match '^VCToolsInstallDir=')) { throw 'vcvars64.bat did not set up the compiler' }
+          $tools = ([string]($vars -match '^VCToolsInstallDir=')[0]).Substring('VCToolsInstallDir='.Length)
+          $cl = Get-Item -LiteralPath (Join-Path $tools 'bin\Hostx64\x64\cl.exe') -ErrorAction SilentlyContinue
+          if ($cl) { Write-Host "cl.exe: $($cl.Length) bytes, written $($cl.LastWriteTimeUtc.ToString('o'))" }
           foreach ($line in $vars) {
             if ($line -match '^([^=]+)=(.*)$') {
               $name = $Matches[1]
@@ -110,6 +118,15 @@ jobs:
         with:
           path: .ccache
           key: ccache-windows-${{ github.sha }}
+
+      - name: Upload ccache log
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: ccache-log-windows
+          path: ccache.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Unit tests
         run: ctest --test-dir build -C Release --output-on-failure
