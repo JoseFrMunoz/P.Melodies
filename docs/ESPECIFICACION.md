@@ -355,4 +355,4 @@ Peticiones de P.P. anotadas para más adelante. **No se implementan** hasta que 
 
 | Fecha | Petición | Notas |
 |---|---|---|
-| 2026-11-06 | **Instalador `.exe` para Windows** que facilite la instalación: generado en el CI junto al `.vst3` (por ejemplo, con Inno Setup), copia `P.Melodies.vst3` a `C:\Program Files\Common Files\VST3`. | Sin certificado de firma de código (de pago), Windows avisará de "editor desconocido", aunque se puede instalar igualmente. Pendiente de asignar fase. |
+| 2026-11-06 | **Instalador `.exe` para Windows** que facilite la instalación: generado en el CI junto al `.vst3` (por ejemplo, con Inno Setup), copia `P.Melodies.vst3` a `C:\Program Files\Common Files\VST3`. | Sin certificado de firma de código (de pago), Windows avisará de "editor desconocido", aunque se puede instalar igualmente. **Asignado a la fase 0 y hecho** (P.P., 2026-11-06): `installer/`, probado en CI (instalar, reinstalar, desinstalar). |

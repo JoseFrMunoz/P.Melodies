@@ -12,6 +12,9 @@ set(PM_REPOSITORY_URL "https://github.com/JoseFrMunoz/P.Melodies")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/Version.h.in
                ${CMAKE_CURRENT_BINARY_DIR}/generated/Version.h @ONLY)
 
+# Read by CI to name and version the Windows installer.
+file(WRITE ${CMAKE_BINARY_DIR}/version.txt "${PROJECT_VERSION}")
+
 juce_add_binary_data(PMBinaryData
     NAMESPACE   BinaryData
     HEADER_NAME BinaryData.h

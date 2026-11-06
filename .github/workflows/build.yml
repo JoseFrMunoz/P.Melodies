@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 JoseFrMunoz
 #
-# Windows: Release VST3, unit tests, pluginval (strictness 10) and the .vst3 as an artifact.
+# Windows: Release VST3, unit tests, pluginval (strictness 10), the .vst3 as an artifact, and an
+#          installer (.exe) that is itself tested: install, reinstall, uninstall.
 # Linux:   build and unit tests.
-# Tags v*: a GitHub Release with the zipped .vst3.
+# Tags v*: a GitHub Release with the zipped .vst3 and the installer.
 
 name: Build
 
@@ -71,6 +72,40 @@ jobs:
           path: ${{ env.VST3_DIR }}/
           if-no-files-found: error
 
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'
+          if (-not (Test-Path $iscc)) { choco install innosetup --no-progress -y }
+          if (-not (Test-Path $iscc)) { throw "Inno Setup compiler not found at $iscc" }
+          $version = (Get-Content build/version.txt -Raw).Trim()
+          $bundle = (Resolve-Path "$env:VST3_DIR/P.Melodies.vst3").Path
+          $output = Join-Path $PWD 'installer-out'
+          & $iscc /Qp "/DAppVersion=$version" "/DVst3Bundle=$bundle" "/DOutputDir=$output" installer\PMelodies.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with exit code $LASTEXITCODE" }
+          Get-ChildItem installer-out
+
+      - name: Test installer (install, reinstall, uninstall)
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem installer-out/*.exe | Select-Object -First 1).FullName
+          ./installer/test-installer.ps1 -Installer $installer -BuildBundle "$env:VST3_DIR/P.Melodies.vst3"
+
+      - name: Upload installer logs
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: installer-logs-windows
+          path: installer-*.log
+          if-no-files-found: ignore
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v5
+        with:
+          name: P.Melodies-windows-installer
+          path: installer-out/*.exe
+          if-no-files-found: error
+
   linux:
     name: Linux · build and tests
     runs-on: ubuntu-24.04
@@ -107,10 +142,17 @@ jobs:
           name: P.Melodies-windows-vst3
           path: dist
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: P.Melodies-windows-installer
+          path: installer
+
       - name: Zip the VST3
         run: cd dist && zip -r "../P.Melodies-${GITHUB_REF_NAME}-windows-vst3.zip" P.Melodies.vst3
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: P.Melodies-${{ github.ref_name }}-windows-vst3.zip
+          files: |
+            P.Melodies-${{ github.ref_name }}-windows-vst3.zip
+            installer/*.exe
           generate_release_notes: true

@@ -24,9 +24,11 @@ Además hay una sección global: ganancia de entrada y salida con medidores, mix
 ### Descargar y probar el build de Windows
 
 1. Ve a la pestaña **Actions** del repositorio y abre la última ejecución en verde del workflow **Build** de la rama que quieras probar.
-2. En **Artifacts**, descarga `P.Melodies-windows-vst3` (un zip).
-3. Descomprímelo y copia la carpeta `P.Melodies.vst3` a `C:\Program Files\Common Files\VST3`.
-4. En FL Studio: *Options → Manage plugins → Find more plugins* (o *Find installed plugins*) y busca **P.Melodies** (fabricante: JoseFrMunoz).
+2. En **Artifacts**, descarga **`P.Melodies-windows-installer`**, descomprímelo y ejecuta `P.Melodies-<versión>-windows-setup.exe`.
+   - El instalador no está firmado, así que Windows mostrará «Windows protegió su PC»: pulsa *Más información → Ejecutar de todas formas*.
+   - Copia el plugin a `C:\Program Files\Common Files\VST3` y se desinstala desde *Configuración → Aplicaciones → P.Melodies (VST3)*.
+3. Sin instalador: descarga `P.Melodies-windows-vst3`, descomprímelo y copia la carpeta `P.Melodies.vst3` a `C:\Program Files\Common Files\VST3`.
+4. En FL Studio: *Options → Manage plugins → Find installed plugins* y busca **P.Melodies** (fabricante: JoseFrMunoz).
 
 ### Compilar desde el código
 
@@ -53,8 +55,8 @@ En Linux hacen falta además las cabeceras de ALSA, FreeType, Fontconfig y X11 (
 ### Download and try the Windows build
 
 1. Open the **Actions** tab, then the latest green run of the **Build** workflow for the branch you want.
-2. Under **Artifacts**, download `P.Melodies-windows-vst3`.
-3. Unzip it and copy the `P.Melodies.vst3` folder to `C:\Program Files\Common Files\VST3`.
+2. Under **Artifacts**, download **`P.Melodies-windows-installer`**, unzip it and run the setup `.exe`. It is not code-signed, so Windows SmartScreen asks for confirmation (*More info → Run anyway*). Uninstall from *Settings → Apps*.
+3. Or download `P.Melodies-windows-vst3` and copy the `P.Melodies.vst3` folder to `C:\Program Files\Common Files\VST3` by hand.
 4. In FL Studio, rescan plugins (*Options → Manage plugins*) and look for **P.Melodies** (vendor: JoseFrMunoz).
 
 ### Build from source

@@ -13,3 +13,8 @@ indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
+
+# Inno Setup reads these on Windows: UTF-8 with BOM and CRLF.
+[installer/*.{iss,txt}]
+charset = utf-8-bom
+end_of_line = crlf

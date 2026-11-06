@@ -82,6 +82,6 @@ Las peticiones que llegan durante el *pre-roll* reinician el cambio con el orden
 - `tests/` usa Catch2. Los tests de interfaz llaman a las mismas funciones que los gestos del ratón, así que se ejecutan sin pantalla.
 - La etiqueta `[.snapshot]` genera capturas PNG si se define `PM_SNAPSHOT_DIR`.
 - GitHub Actions:
-  - **Windows:** build Release, tests, pluginval al nivel 10 y el `.vst3` como artefacto.
+  - **Windows:** build Release, tests, pluginval al nivel 10 y el `.vst3` como artefacto. Además genera el instalador (`installer/PMelodies.iss`, Inno Setup) y lo prueba en el propio runner con `installer/test-installer.ps1`: instalación silenciosa, ficheros idénticos al build, reinstalación encima y desinstalación limpia.
   - **Linux:** build y tests.
   - Cada tag `v*` publica una release.

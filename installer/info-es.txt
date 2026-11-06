@@ -1,0 +1,14 @@
+﻿P.Melodies — plugin de audio VST3 para FL Studio (64 bits)
+
+Este instalador copia el plugin en:
+    C:\Program Files\Common Files\VST3\P.Melodies.vst3
+
+Después de instalarlo, abre FL Studio y reescanea los plugins:
+    Options > Manage plugins > Find installed plugins
+
+Si FL Studio está abierto con el plugin cargado, el instalador te pedirá cerrarlo.
+
+Para desinstalarlo: Configuración de Windows > Aplicaciones > P.Melodies (VST3).
+
+P.Melodies es software libre, con licencia GNU AGPLv3. El código fuente está en:
+    https://github.com/JoseFrMunoz/P.Melodies
