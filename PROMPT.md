@@ -66,7 +66,7 @@ Vas a construir **P.Melodies**, un plugin de audio VST3 para FL Studio en Window
 ### 3.1 Núcleo
 - `AudioProcessorValueTreeState` para todos los parámetros. Todos son **automatizables** desde FL Studio, con nombres legibles y unidades.
 - Interfaz común `Module` con `prepare(spec)`, `reset()`, `process(block, sidechain)`, `getLatencySamples()` y `setBypassed(bool)`. Los cuatro módulos la implementan.
-- **Cadena reordenable:** el orden se guarda en un único parámetro entero que codifica la permutación de los 4 módulos (24 combinaciones), así se guarda con el proyecto y los presets. Orden por defecto: EQ → Compresor → Saturación → Distorsión.
+- **Cadena reordenable:** el orden se guarda en el estado del plugin (por ejemplo, un parámetro que codifica la permutación: 24 combinaciones con los 4 módulos actuales), así se guarda con el proyecto y los presets. El diseño debe poder ampliarse a más módulos en el futuro sin romper presets ni proyectos guardados. Orden por defecto: EQ → Compresor → Saturación → Distorsión.
 - **Cambio de orden sin clics:** al reordenar, haz un fundido cruzado de 20 ms entre la cadena antigua y la nueva, procesando ambas durante el fundido.
 - **Latencia:** reporta a FL Studio una latencia **constante**, la máxima posible según los ajustes que la generan (lookahead y oversampling), y compensa internamente con retardos para que no cambie al mover parámetros ni al reordenar. La ruta *dry* del mix global debe ir alineada.
 - **Oversampling:** usa `juce::dsp::Oversampling`. Cada módulo que lo necesite tiene su selector. Ajuste global de calidad: un factor *al reproducir* y otro *al exportar* (detectado con `isNonRealtime()`), que se aplica como mínimo.
@@ -339,6 +339,8 @@ Quedan para la v2:
 - macOS y otros formatos.
 
 Diseña el código para que estas mejoras se puedan añadir sin reescribir lo existente.
+
+En [`docs/PENDIENTES.md`](docs/PENDIENTES.md) hay más ideas de módulos para el futuro (cristalizador, delay y reverb). **No los implementes:** son solo una lista de pendientes. Pero ten en cuenta que la cadena tendrá que admitir más de 4 módulos, así que no fijes el número de módulos en la arquitectura ni en el parámetro que guarda el orden.
 
 ---
 
