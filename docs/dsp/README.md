@@ -70,3 +70,25 @@ Referencia:
 
 - **Denormales:** `juce::ScopedNoDenormals` activa *flush-to-zero* en el hilo de audio.
 - **NaN/Inf:** en debug, `debug::checkFinite` detiene la ejecución si aparece uno a la salida de los módulos o del motor. Los tests lo comprueban con parámetros y señales extremos.
+
+## Herramientas de medida de los tests (`tests/Measurement.h`)
+
+Las usarán los tests de las fases 1 a 4. Todo el cálculo es en doble precisión, mucho más exacto que las señales `float` que miden, y cada herramienta se comprueba con señales de resultado conocido en `tests/MeasurementTests.cpp`.
+
+- **Respuesta en frecuencia:** se mide la respuesta al impulso de una ruta lineal y se evalúa su transformada exactamente en cualquier frecuencia, sin limitarse a las bandas de una FFT. Sirve para comparar el EQ y los crossovers con la respuesta analítica.
+- **Ajuste de seno:** mínimos cuadrados con seno, coseno y continua a una frecuencia conocida (el ajuste de tres parámetros de IEEE 1057). Da ganancia y fase con cualquier longitud de ventana, también en rutas no lineales.
+- **Armónicos y aliasing:** el tono de prueba se coloca en una banda exacta de la FFT (muestreo coherente, IEEE 1241). Así los armónicos y sus alias caen en bandas exactas y no hace falta ventana. Con una banda impar y una FFT de tamaño potencia de dos, ningún alias de los primeros pliegues coincide con un armónico, de modo que se separan exactamente:
+  - **THD:** potencia de los armónicos por debajo de Nyquist respecto a la fundamental.
+  - **Resto:** todo lo demás (aliasing y ruido) respecto a la fundamental.
+  - **Ejemplo medido:** `tanh(4x)` sobre un seno de 7 kHz a 48 kHz deja el aliasing en −28 dB sin oversampling y en −123 dB a 8x. La THD (el 3.er armónico, a 21 kHz) no cambia: el oversampling quita el aliasing, no la distorsión.
+- **Tiempos de respuesta:** traza de ganancia muestra a muestra (salida / entrada, con la latencia compensada) y tiempo hasta recorrer una fracción del salto, por ejemplo el 63,2 % para la constante de tiempo de un filtro de un polo.
+- **Clics:** pico de la señal tras un pasa-altos Butterworth de 4.º orden a 8 kHz.
+  - Un tono de prueba grave (100–200 Hz) casi desaparece; un salto brusco, no.
+  - Medido a 48 kHz: un salto de tamaño *d* da unos 0,4 *d*; un tono limpio de 150 Hz a −6 dBFS, unos 5·10⁻⁸; un fundido lineal de 20 ms sobre él, unos 6·10⁻⁵.
+
+Referencias:
+- IEEE Std 1057-2017, *Standard for Digitizing Waveform Recorders* (ajuste de seno de tres parámetros).
+- IEEE Std 1241-2010, *Standard for Terminology and Test Methods for Analog-to-Digital Converters* (muestreo coherente, THD).
+- J. W. Cooley, J. W. Tukey, "An Algorithm for the Machine Calculation of Complex Fourier Series", *Mathematics of Computation* 19(90), 1965 (FFT radix 2).
+- R. Bristow-Johnson, *Cookbook formulae for audio EQ biquad filter coefficients* (pasa-altos del detector de clics).
+

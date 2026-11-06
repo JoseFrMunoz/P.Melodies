@@ -70,6 +70,7 @@ Las peticiones que llegan durante el *pre-roll* reinician el cambio con el orden
 
 - **Audio:** `processBlock` → `AudioEngine::process`. Sin reservas de memoria, locks, I/O ni logs; hay un test que cuenta las reservas. Los bloques más grandes que el tamaño preparado se dividen internamente.
 - **Interfaz:** lee los medidores con atómicos en un temporizador a 30 Hz. Los cambios de parámetros van por los adjuntos de JUCE (`ParameterAttachment`), que agrupan cada arrastre en un gesto.
+- **Audio → interfaz con más datos** (muestras para el analizador, historiales de nivel de las pantallas de los módulos): `dsp::LockFreeFifo`, una cola de un productor y un consumidor sin bloqueos ni reservas de memoria. Si está llena, el audio escribe lo que cabe y sigue: nunca espera a la interfaz.
 - **Estado:** XML con número de versión (`stateVersion`). `migrateState()` completa los parámetros que falten con su valor por defecto y es el punto donde irán las migraciones futuras.
 
 ## Interfaz
@@ -80,8 +81,11 @@ Las peticiones que llegan durante el *pre-roll* reinician el cambio con el orden
 ## Tests y CI
 
 - `tests/` usa Catch2. Los tests de interfaz llaman a las mismas funciones que los gestos del ratón, así que se ejecutan sin pantalla.
+- `tests/Measurement.h` reúne las herramientas de medida para los tests de los módulos: respuesta en frecuencia exacta a partir de la respuesta al impulso, ajuste de seno, armónicos y aliasing, tiempos de respuesta y detector de clics. Cada herramienta se comprueba con señales de resultado conocido (`MeasurementTests.cpp`); los métodos están en `docs/dsp/README.md`.
 - La etiqueta `[.snapshot]` genera capturas PNG si se define `PM_SNAPSHOT_DIR`.
+- La etiqueta `[.cpu]` mide el uso de CPU de una instancia (48 kHz, bloques de 512): el plugin con los ajustes por defecto y cuatro módulos activos con oversampling a 2x, 8x y 16x. Por ahora solo informa; en la fase 6 se compara con el presupuesto.
 - GitHub Actions:
-  - **Windows:** build Release, tests, pluginval al nivel 10 y el `.vst3` como artefacto. Además genera el instalador (`installer/PMelodies.iss`, Inno Setup) y lo prueba en el propio runner con `installer/test-installer.ps1`: instalación silenciosa, ficheros idénticos al build, reinstalación encima y desinstalación limpia.
+  - **Windows:** build Release con Ninja y MSVC, tests, uso de CPU (tabla en el resumen de la ejecución), pluginval al nivel 10 y el `.vst3` como artefacto. Además genera el instalador (`installer/PMelodies.iss`, Inno Setup) y lo prueba en el propio runner con `installer/test-installer.ps1`: instalación silenciosa, ficheros idénticos al build, reinstalación encima y desinstalación limpia.
   - **Linux:** build y tests.
+  - **Caché de compilación:** los dos jobs guardan ccache entre ejecuciones, así que cada push solo recompila lo que ha cambiado (JUCE y Catch2 salen de la caché). Linux guarda también los paquetes `.deb`. Un push nuevo a la misma rama cancela la ejecución anterior.
   - Cada tag `v*` publica una release.
