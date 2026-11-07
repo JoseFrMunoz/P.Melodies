@@ -84,30 +84,33 @@ const Theme& Theme::dark()
         Theme t;
         t.name = juce::String (juce::CharPointer_UTF8 ("Oscuro"));
 
+        // "Obsidiana y oro", the P.P. brand palette (specification §12): near-black with a cold
+        // tint, warm text and an old-gold signature colour.
+
         auto& c = t.colours;
-        c.window = hex (0x0B0D11);
-        c.background = hex (0x0F1115);
-        c.panel = hex (0x13161C);
-        c.panelRaised = hex (0x161A21);
-        c.elevated = hex (0x1D222B);
-        c.elevatedHigh = hex (0x232833);
-        c.borderSubtle = hex (0x222831);
-        c.border = hex (0x2A303B);
-        c.borderStrong = hex (0x323946);
-        c.borderHover = hex (0x3A414E);
-        c.text = hex (0xE7EAF0);
+        c.window = hex (0x06070A);
+        c.background = hex (0x0A0B0F);
+        c.panel = hex (0x0F1015);
+        c.panelRaised = hex (0x121318);
+        c.elevated = hex (0x181A21);
+        c.elevatedHigh = hex (0x1F2128);
+        c.borderSubtle = hex (0x1C1E25);
+        c.border = hex (0x262932);
+        c.borderStrong = hex (0x2F323C);
+        c.borderHover = hex (0x393C47);
+        c.text = hex (0xEDE9E0);
         c.textBright = hex (0xFFFFFF);
-        c.textSecondary = hex (0xC9CED8);
-        c.textMuted = hex (0x8A93A3);
-        c.textDim = hex (0x5B6473);
-        c.accent = hex (0x5EE6C4);
-        c.accentHover = hex (0x9CF0DA);
-        c.onAccent = hex (0x0B0D11);
+        c.textSecondary = hex (0xD2CEC4);
+        c.textMuted = hex (0x9B978E);
+        c.textDim = hex (0x615E58);
+        c.accent = hex (0xD4AF37);
+        c.accentHover = hex (0xE8CB6A);
+        c.onAccent = hex (0x06070A);
         c.danger = hex (0xE5484D);
-        c.knobCapHover = hex (0x2E3440);
-        c.knobCapBorderHover = hex (0x4A5260);
+        c.knobCapHover = hex (0x2A2D36);
+        c.knobCapBorderHover = hex (0x464A55);
         c.backdrop = juce::Colour (0x99000000);
-        c.module = { hex (0x5EE6C4), hex (0xF5A524), hex (0xFF7A59), hex (0xE85D9C) };
+        c.module = { hex (0xD4AF37), hex (0x8FA6BF), hex (0xC8743C), hex (0xAD374E) }; // gold, steel, copper, garnet
         return t;
     }();
 

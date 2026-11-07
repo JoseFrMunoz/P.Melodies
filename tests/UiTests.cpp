@@ -54,13 +54,52 @@ void savePng (const juce::Image& image, const juce::String& name)
 }
 } // namespace
 
+TEST_CASE ("Theme: text and controls are readable (WCAG 2.1 contrast)", "[ui][theme][phase0]")
+{
+    // Relative luminance and contrast ratio as defined by WCAG 2.1.
+    const auto luminance = [] (juce::Colour c)
+    {
+        const auto channel = [] (juce::uint8 v)
+        {
+            const auto x = v / 255.0;
+            return x <= 0.03928 ? x / 12.92 : std::pow ((x + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * channel (c.getRed()) + 0.7152 * channel (c.getGreen()) + 0.0722 * channel (c.getBlue());
+    };
+    const auto contrast = [&] (juce::Colour a, juce::Colour b)
+    {
+        const auto la = luminance (a), lb = luminance (b);
+        return (std::max (la, lb) + 0.05) / (std::min (la, lb) + 0.05);
+    };
+
+    const auto& c = ui::Theme::dark().colours;
+    // Normal text needs 4.5:1, on every surface it is drawn on.
+    for (const auto surface : { c.window, c.background, c.panel, c.panelRaised, c.elevated })
+    {
+        CHECK (contrast (c.text, surface) >= 4.5);
+        CHECK (contrast (c.textSecondary, surface) >= 4.5);
+        CHECK (contrast (c.textMuted, surface) >= 4.5);
+    }
+    CHECK (contrast (c.onAccent, c.accent) >= 4.5); // text on accent buttons
+    // Graphical elements (curves, knob arcs, module colours) need 3:1 against the background.
+    for (const auto surface : { c.background, c.panel })
+    {
+        CHECK (contrast (c.accent, surface) >= 3.0);
+        for (const auto colour : c.module)
+            CHECK (contrast (colour, surface) >= 3.0);
+    }
+}
+
 TEST_CASE ("Theme: module colours and embedded fonts", "[ui][theme][phase0]")
 {
     const auto& theme = ui::Theme::dark();
-    CHECK (theme.moduleColour (ModuleId::eq) == juce::Colour (0xff5ee6c4));
-    CHECK (theme.moduleColour (ModuleId::compressor) == juce::Colour (0xfff5a524));
-    CHECK (theme.moduleColour (ModuleId::saturation) == juce::Colour (0xffff7a59));
-    CHECK (theme.moduleColour (ModuleId::distortion) == juce::Colour (0xffe85d9c));
+    CHECK (theme.moduleColour (ModuleId::eq) == juce::Colour (0xffd4af37));
+    CHECK (theme.moduleColour (ModuleId::compressor) == juce::Colour (0xff8fa6bf));
+    CHECK (theme.moduleColour (ModuleId::saturation) == juce::Colour (0xffc8743c));
+    CHECK (theme.moduleColour (ModuleId::distortion) == juce::Colour (0xffad374e));
+
+    // Brand rule: the EQ wears the signature colour, which is also the accent.
+    CHECK (theme.colours.accent == theme.moduleColour (ModuleId::eq));
 
     // The embedded typefaces load (not a system fallback).
     CHECK (theme.ui (12.0f).getTypefacePtr()->getName().contains ("Inter"));
