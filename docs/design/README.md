@@ -1,6 +1,6 @@
 # Referencias visuales de P.Melodies
 
-Diseño base de la interfaz (v1). La funcionalidad, los controles y las interacciones son obligatorios; los colores y el estilo visual son provisionales.
+Diseño base de la interfaz (v1). La funcionalidad, los controles y las interacciones son obligatorios. Los colores son los de la paleta de marca **«Obsidiana y oro»** (decidida el 2026-11-07, especificación §12); el resto del estilo visual es provisional.
 
 | Pantalla | PNG | HTML |
 |---|---|---|
@@ -16,3 +16,5 @@ Diseño base de la interfaz (v1). La funcionalidad, los controles y las interacc
 - Las capturas están a 2x (2000×1280) de una ventana base de 1000×640 px.
 - Los HTML son estáticos: ábrelos en un navegador o léelos para sacar colores, tamaños y tipografías exactos. Cargan las fuentes desde Google Fonts.
 - Los valores que aparecen (400 Hz, −18 dB…) son de ejemplo.
+- La pantalla 07 muestra el tema Oscuro con la paleta de marca. Claro, Neón y Vintage conservan sus colores anteriores hasta la fase 5.
+- Los PNG se generan desde los HTML con Chromium (Playwright), a 2x, con las fuentes de `assets/fonts/`.

@@ -25,7 +25,7 @@ Los manuales de todas las referencias están en [`docs/referencias/README.md`](r
 - `html/*.html` — las mismas pantallas en HTML estático. Ahí están los valores exactos de colores, tamaños, espaciados y tipografías.
 - Pantallas: `01-vista-general-eq`, `02-compresor`, `03-saturacion-multibanda`, `03b-saturacion-menu-estilos-abierto`, `04-distorsion`, `05-presets-y-ajustes`, `06-componentes-e-interacciones`, `07-plantillas-de-aspecto`.
 
-**Funcionalidad e interacciones de las referencias:** obligatorias. **Colores y estilo visual:** provisionales. P.P. los cambiará más adelante, así que centraliza todos los colores, fuentes y medidas en un único sistema de tema para poder cambiarlos sin tocar los componentes.
+**Funcionalidad e interacciones de las referencias:** obligatorias. **Colores:** la paleta de marca «Obsidiana y oro» está decidida (§12). **El resto del estilo visual:** provisional, P.P. puede cambiarlo más adelante. Por eso todos los colores, fuentes y medidas están centralizados en un único sistema de tema y se cambian sin tocar los componentes.
 
 ---
 
@@ -229,7 +229,8 @@ Los manuales de todas las referencias están en [`docs/referencias/README.md`](r
 - Cuatro plantillas: **Oscuro** (por defecto), **Claro**, **Neón** y **Vintage**. Los valores de cada una están en `07-plantillas-de-aspecto.html`.
 - Todo color sale de un objeto de tema con tokens: fondo, panel, elevado, borde, texto, texto secundario, acento y los colores de cada módulo. El tema se cambia en caliente.
 - **Fuentes:** Inter (interfaz), JetBrains Mono (valores) y Space Grotesk (títulos), embebidas como BinaryData, con sus licencias OFL en `licenses/`.
-- **Colores provisionales de módulo:** EQ menta `#5EE6C4`, Compresor ámbar `#F5A524`, Saturación coral `#FF7A59` y Distorsión rosa `#E85D9C`.
+- **Paleta del tema Oscuro: «Obsidiana y oro»**, la paleta de marca de P.P. (§12). Base casi negra con un matiz frío (`#06070A` a `#262932`), textos cálidos (`#EDE9E0`, `#D2CEC4`, `#9B978E`) y **oro viejo `#D4AF37` como firma** (acento).
+- **Colores de módulo:** EQ oro `#D4AF37` (el mismo que la firma), Compresor acero `#8FA6BF`, Saturación cobre `#C8743C` y Distorsión granate `#AD374E`.
 
 ---
 
@@ -328,6 +329,7 @@ Sección 7 completa.
 ### Fase 5 — Presets, A/B, deshacer, ajustes y temas
 Secciones 8.2 a 8.5: atajos, presets de fábrica y de usuario, A/B, deshacer y rehacer, ajustes, escalado de ventana, 4 temas y tooltips.
 - Se activan los controles de la cabecera que la fase 0 dejó atenuados (presets, A/B, deshacer/rehacer y tema).
+- Las plantillas Claro, Neón y Vintage conservan sus colores de antes de la paleta de marca. Al empezar la fase, P.P. decide si se adaptan a la marca (por ejemplo, con la firma oro) o cambian.
 - **Tests:**
   - Ida y vuelta de presets.
   - Los presets de fábrica son de solo lectura.
@@ -396,6 +398,7 @@ Decisiones tomadas con P.P. Tienen el mismo valor que el resto de la especificac
 | Mejoras de la base común (2026-11-06) | En la fase 0 y sin cambiar el sonido ni la interfaz: CI rápido, herramientas de medida para los tests, medida de CPU y cola sin bloqueos audio → interfaz. Una mejora cada vez, con el CI en verde antes de la siguiente. |
 | Preguntas de cada módulo (2026-11-06) | Se hacen al empezar la fase de ese módulo, no antes. Nada se adelanta a su fase. |
 | Manuales de referencia (2026-11-07) | Índice en `docs/referencias/README.md`. Se leen al empezar la fase del módulo, solo para emular el comportamiento (regla 8). Los PDF no se suben al repositorio (derechos de terceros): se enlazan. |
+| Paleta de marca (2026-11-07) | «Obsidiana y oro» en el tema Oscuro por defecto: base casi negra con matiz frío, textos cálidos, oro viejo `#D4AF37` como firma y módulos en oro, acero, cobre y granate (§8.5). Es la firma visual de P.P.: verla y saber que es suyo. El granate se aclaró de `#A3344A` a `#AD374E` para llegar al contraste mínimo de 3:1 que piden los elementos gráficos; un test comprueba el contraste de todo el tema. |
 | Referencia de la distorsión (2026-11-07) | Distructor de FL Studio como principal; Fruity Fast Dist, Fruity WaveShaper y Saturn 2 como apoyo. Se puede cambiar si no convence. |
 
 ---
