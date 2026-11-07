@@ -9,10 +9,12 @@
 
 Vas a construir **P.Melodies**, un plugin de audio VST3 para FL Studio en Windows. Reúne en una sola ventana cuatro módulos de efectos reordenables:
 
-1. **EQ** paramétrico, inspirado en el funcionamiento de FabFilter Pro-Q.
+1. **EQ** paramétrico, inspirado en el funcionamiento de FabFilter Pro-Q (la versión 4: sus modos de carácter son los de §4).
 2. **Compresor**, inspirado en FabFilter Pro-C 2.
 3. **Saturación multibanda**, inspirada en FabFilter Saturn 2.
-4. **Distorsión** de banda completa.
+4. **Distorsión** de banda completa, inspirada en Distructor de FL Studio, con Fruity Fast Dist, Fruity WaveShaper y Saturn 2 como apoyo (decidido el 2026-11-07; P.P. puede cambiarla si no le convence).
+
+Los manuales de todas las referencias están en [`docs/referencias/README.md`](referencias/README.md).
 
 **Quién lo pide:** P.P., desarrollador (Grado Superior DAM) que programa en Java y Python, **no en C++**, y produce música en FL Studio. El proyecto irá a su GitHub como pieza de portafolio, así que el código, los commits y la documentación deben ser de calidad profesional.
 
@@ -161,6 +163,8 @@ Vas a construir **P.Melodies**, un plugin de audio VST3 para FL Studio en Window
 
 ## 7. Módulo 4 — Distorsión (referencia: `04-distorsion.png`)
 
+**Comportamiento a emular:** distorsión de banda completa con varios algoritmos, tomando como referencia Distructor de FL Studio (y, para modos que no tenga, Fruity Fast Dist, Fruity WaveShaper y los estilos de efectos de Saturn 2).
+
 - **Modos:** Hard clip, Foldback, Rectificador, Fuzz, Bitcrusher y Downsample, mostrados como tarjetas con su curva.
 - **Parámetros:**
 
@@ -231,9 +235,19 @@ Vas a construir **P.Melodies**, un plugin de audio VST3 para FL Studio en Window
 
 ## 9. Fases de desarrollo
 
-Cada fase termina con el cierre descrito en la regla 2 y **se detiene a esperar el visto bueno**.
+**Cómo empieza cada fase de módulo (1 a 4)** (acuerdos de §12):
+
+1. Visto bueno de P.P. a la fase anterior y rama nueva `phase/N-…`.
+2. Leer la sección del módulo en esta especificación, sus pantallas de `docs/design/` y los **manuales de sus plugins de referencia** (`docs/referencias/README.md`), solo para emular su comportamiento (regla 8).
+3. **Preguntar a P.P.** las dudas de ese módulo, con una recomendación en cada una, y esperar sus respuestas antes de programar. Las preguntas de un módulo no se adelantan a fases anteriores.
+
+**Cómo termina:** con el cierre de la regla 2 (también el instalador `.exe` como artefacto) y **se detiene a esperar el visto bueno**.
+
+Lo que no está en la fase correspondiente no se hace: las peticiones de §13 esperan a que P.P. les asigne una fase.
 
 ### Fase 0 — Base común
+**Estado:** hecha y en verde en el CI. Pendiente de las pruebas de P.P. en FL Studio y de su visto bueno.
+
 Todo lo que comparten los módulos. Si falla aquí, fallaría en los cuatro.
 - Repo, CMake, JUCE fijado, `LICENSE` AGPLv3, `CLAUDE.md`, `docs/ESPECIFICACION.md`, README inicial y `.gitignore`.
 - **CI en GitHub Actions:**
@@ -244,6 +258,12 @@ Todo lo que comparten los módulos. Si falla aquí, fallaría en los cuatro.
 - Sistema de tema y componentes base: knob, interruptor, selector segmentado, desplegable, medidor y tooltip.
 - Ventana con cabecera, panel de cadena con arrastre y encendido, y pie. Los paneles de módulo quedan vacíos con su título.
 - Guardar y restaurar el estado en el proyecto de FL Studio.
+- **Añadido después, a petición de P.P. (§12):**
+  - **Instalador `.exe`** (Inno Setup, `installer/`): generado en el CI, probado allí (instalar, reinstalar, desinstalar) y adjunto a cada release.
+  - **CI rápido:** caché de compilación (ccache) en Windows y Linux, Windows con Ninja y caché de paquetes de Linux. Un push tarda unos 2–2,5 min (antes, de 9 a 15).
+  - **Herramientas de medida para los tests de los módulos** (`tests/Measurement.h`): respuesta en frecuencia, ajuste de seno, armónicos y aliasing, tiempos de respuesta y clics.
+  - **Medida de CPU** (`Tests "[.cpu]"`), con la tabla en el resumen de cada ejecución del CI. Por ahora solo informa.
+  - **Cola sin bloqueos audio → interfaz** (`dsp::LockFreeFifo`) para el analizador y las pantallas de los módulos.
 - **Tests:**
   - Passthrough nulo: con todo neutro, la salida es idéntica a la entrada, salvo la latencia declarada.
   - La latencia declarada coincide con la medida por impulso.
@@ -253,21 +273,30 @@ Todo lo que comparten los módulos. Si falla aquí, fallaría en los cuatro.
   - Mono y estéreo.
   - Sin NaN/Inf con parámetros extremos.
   - El clipper respeta el techo.
+  - Además: las herramientas de medida comprobadas con señales de resultado conocido, y la cola sin bloqueos (orden, llena/vacía, sin reservas de memoria, dos hilos).
 
 ### Fase 1 — EQ
 Sección 4 completa, DSP e interfaz.
+- **Referencias:** manual de Pro-Q 4 (sus modos de carácter son los de §4) y, como apoyo, el de Pro-Q 3.
+- **Diseño preparado para la ampliación pendiente de §13** (tipo Volcano), sin implementarla:
+  - Cada banda es un objeto independiente con su propia ruta de proceso.
+  - Los parámetros de banda se suavizan de forma que más adelante puedan recibir una modulación.
+- El analizador de espectro recibe las muestras por la cola sin bloqueos de la fase 0.
 - **Tests:**
   - Respuesta de cada tipo de filtro frente a la respuesta analítica, con tolerancia, en varias frecuencias de muestreo.
   - Barrido de automatización de frecuencia y ganancia sin clics.
   - Estabilidad con Q extremas y frecuencias cerca de Nyquist.
   - Solo y bypass de banda.
   - Carácter Clean idéntico a la entrada cuando la ganancia es 0.
+  - Se miden con las herramientas de la fase 0: respuesta en frecuencia exacta para la comparación analítica y detector de clics para los barridos.
 
 ### Fase 2 — Compresor
 Sección 5 completa.
+- **Referencias:** manual de Pro-C 2 (sus 8 estilos son los de §5). El de Pro-C 3 solo como contexto: lo que añade queda fuera de la especificación.
+- El gráfico de niveles recibe sus datos por la cola sin bloqueos de la fase 0.
 - **Tests:**
   - Curva estática (entrada/salida) para cada combinación de ratio y knee.
-  - Tiempos de attack y release medidos con señales escalón.
+  - Tiempos de attack y release medidos con señales escalón (traza de ganancia y tiempo de respuesta de la fase 0).
   - Range limita la reducción.
   - El lookahead suma la latencia correcta.
   - Sidechain externo y filtros del sidechain.
@@ -276,15 +305,19 @@ Sección 5 completa.
 
 ### Fase 3 — Saturación multibanda
 Sección 6 completa.
+- **Referencia:** manual de Saturn 2.
+- Las curvas de saturación de los estilos se escriben como piezas reutilizables: la ampliación pendiente del EQ (§13, saturar la frecuencia realzada) podría usarlas.
 - **Tests:**
   - Reconstrucción plana de los crossovers con 1 a 6 bandas y todas las pendientes.
   - Drive 0 y mix 0 % idénticos a la entrada.
   - El feedback al 100 % no se dispara.
-  - El aliasing con oversampling queda por debajo de un umbral definido.
+  - El aliasing con oversampling queda por debajo de un umbral definido (análisis de armónicos de la fase 0).
   - Solo y bypass por banda.
 
 ### Fase 4 — Distorsión
 Sección 7 completa.
+- **Referencias:** Distructor de FL Studio (principal), con Fruity Fast Dist, Fruity WaveShaper y Saturn 2 como apoyo. Sus manuales son páginas de image-line.com, que hay que permitir en el entorno de red antes de leerlas.
+- La pantalla de forma de onda (entrada frente a salida) recibe sus datos por la cola sin bloqueos de la fase 0.
 - **Tests:**
   - Curva de transferencia de cada modo.
   - Mix 0 % idéntico a la entrada.
@@ -294,6 +327,7 @@ Sección 7 completa.
 
 ### Fase 5 — Presets, A/B, deshacer, ajustes y temas
 Secciones 8.2 a 8.5: atajos, presets de fábrica y de usuario, A/B, deshacer y rehacer, ajustes, escalado de ventana, 4 temas y tooltips.
+- Se activan los controles de la cabecera que la fase 0 dejó atenuados (presets, A/B, deshacer/rehacer y tema).
 - **Tests:**
   - Ida y vuelta de presets.
   - Los presets de fábrica son de solo lectura.
@@ -302,10 +336,14 @@ Secciones 8.2 a 8.5: atajos, presets de fábrica y de usuario, A/B, deshacer y r
   - Cambiar de tema no altera el audio.
 
 ### Fase 6 — Pulido y versión 1.0.0
-- Revisión de CPU con un presupuesto objetivo documentado.
+- Revisión de CPU con un presupuesto objetivo documentado: la medida de CPU de la fase 0 pasa de informar a comprobar ese presupuesto en el CI.
 - Revisión de accesibilidad: contraste y tamaños.
-- README final con capturas, instalación (copiar el `.vst3` a `C:\Program Files\Common Files\VST3` y reescanear en FL Studio), uso y licencias.
-- `CHANGELOG.md` y tag `v1.0.0`.
+- README final con capturas, instalación (el instalador `.exe` y, como alternativa, copiar el `.vst3` a `C:\Program Files\Common Files\VST3`; después, reescanear en FL Studio), uso y licencias.
+- `CHANGELOG.md` y tag `v1.0.0`: la release lleva el `.vst3` en un zip y el instalador.
+
+### Después de la v1
+- Peticiones de §13 a las que P.P. asigne una fase.
+- Lo que §10 deja para la v2.
 
 ---
 
@@ -326,15 +364,23 @@ Diseña el código para que estas mejoras se puedan añadir sin reescribir lo ex
 
 ## 11. Cómo empezar
 
+Inicio original del proyecto (ya hecho):
+
 1. Lee este documento completo y mira todas las imágenes de `docs/design/png/`.
 2. Responde a P.P. con un resumen de 10 líneas de lo que vas a construir, el plan detallado de la **Fase 0** y las dudas que tengas.
 3. Espera su confirmación y empieza la Fase 0.
+
+**Al retomar el trabajo en una sesión nueva:**
+
+1. Lee `CLAUDE.md`, este documento (sobre todo §9, §12 y §13) y `docs/arquitectura.md`.
+2. Comprueba en qué fase está el proyecto (§9 y ramas `phase/*`) y si P.P. ha dado su visto bueno a la última.
+3. Para empezar una fase de módulo, sigue los pasos del principio de §9.
 
 ---
 
 ## 12. Decisiones aprobadas
 
-Decisiones tomadas con P.P. antes de empezar la Fase 0. Tienen el mismo valor que el resto de la especificación.
+Decisiones tomadas con P.P. Tienen el mismo valor que el resto de la especificación. Las que tienen fecha se tomaron durante la fase 0.
 
 | Tema | Decisión |
 |---|---|
@@ -346,14 +392,18 @@ Decisiones tomadas con P.P. antes de empezar la Fase 0. Tienen el mismo valor qu
 | Qué se guarda dónde | Tamaño de ventana, tema y tooltips: preferencias del usuario, comunes a todas las instancias. Calidad (reproducir/exportar), clipper y techo: se guardan con el proyecto, pero cargar un preset no los cambia. Todo lo demás (módulos, orden, entrada, salida, mix) va en el preset. |
 | Cabecera en la Fase 0 | Visible completa. Presets, A/B, deshacer/rehacer y tema aparecen atenuados («Disponible más adelante») hasta la Fase 5. Ajustes y el botón Calidad abren el panel de ajustes con las secciones de calidad y clipper. |
 | `PROMPT.md` | Sustituido por `CLAUDE.md` + este documento. El original queda en el historial de git. |
+| Instalador `.exe` (2026-11-06) | Pasó de pendiente a la fase 0, hecho: `installer/` (Inno Setup), probado en el CI y adjunto a las releases. Sin firma de código: Windows avisa de «editor desconocido». |
+| Mejoras de la base común (2026-11-06) | En la fase 0 y sin cambiar el sonido ni la interfaz: CI rápido, herramientas de medida para los tests, medida de CPU y cola sin bloqueos audio → interfaz. Una mejora cada vez, con el CI en verde antes de la siguiente. |
+| Preguntas de cada módulo (2026-11-06) | Se hacen al empezar la fase de ese módulo, no antes. Nada se adelanta a su fase. |
+| Manuales de referencia (2026-11-07) | Índice en `docs/referencias/README.md`. Se leen al empezar la fase del módulo, solo para emular el comportamiento (regla 8). Los PDF no se suben al repositorio (derechos de terceros): se enlazan. |
+| Referencia de la distorsión (2026-11-07) | Distructor de FL Studio como principal; Fruity Fast Dist, Fruity WaveShaper y Saturn 2 como apoyo. Se puede cambiar si no convence. |
 
 ---
 
 ## 13. Pendientes
 
-Peticiones de P.P. anotadas para más adelante. **No se implementan** hasta que P.P. diga en qué fase van.
+Peticiones de P.P. anotadas para más adelante. **No se implementan** hasta que P.P. diga en qué fase van. Las ya asignadas pasan a §12 y §9.
 
 | Fecha | Petición | Notas |
 |---|---|---|
-| 2026-11-06 | **Instalador `.exe` para Windows** que facilite la instalación: generado en el CI junto al `.vst3` (por ejemplo, con Inno Setup), copia `P.Melodies.vst3` a `C:\Program Files\Common Files\VST3`. | Sin certificado de firma de código (de pago), Windows avisará de "editor desconocido", aunque se puede instalar igualmente. **Asignado a la fase 0 y hecho** (P.P., 2026-11-06): `installer/`, probado en CI (instalar, reinstalar, desinstalar). |
-| 2026-11-07 | **EQ con funciones de filtro creativo, tomando como referencia FabFilter Volcano 3:** estilos de filtro por banda con resonancia no lineal y autooscilación, drive por banda para **saturar solo la frecuencia realzada** (la zona de la campana o el pico de resonancia, más cuanto más fuerte llega), forma pasa-todo, modulación de las bandas (LFO por pasos, envolvente, seguidor de envolvente, MIDI), enrutado serie/paralelo, L/R o M/S y panorama por banda. | Investigación y encaje con el EQ en [`docs/referencias/volcano-3.md`](referencias/volcano-3.md). **Choca con lo ya decidido:** latencia cero del EQ (§4; los estilos no lineales necesitan oversampling), modulación, EQ dinámico y M/S fuera de la v1 (§10), y el plugin no recibe MIDI. Falta que P.P. elija qué partes y en qué fase. Solo comportamiento: ni código, ni nombres, ni interfaz (regla 8). |
+| 2026-11-07 | **EQ con funciones de filtro creativo, tomando como referencia FabFilter Volcano 3:** estilos de filtro por banda con resonancia no lineal y autooscilación, drive por banda para **saturar solo la frecuencia realzada** (la zona de la campana o el pico de resonancia, más cuanto más fuerte llega), forma pasa-todo, modulación de las bandas (LFO por pasos, envolvente, seguidor de envolvente, MIDI), enrutado serie/paralelo, L/R o M/S y panorama por banda. | Investigación (con el manual oficial) y encaje con el EQ en [`docs/referencias/volcano-3.md`](referencias/volcano-3.md). **Choca con lo ya decidido:** latencia cero del EQ (§4; los estilos no lineales necesitan oversampling), modulación, EQ dinámico y M/S fuera de la v1 (§10), y el plugin no recibe MIDI. **Recomendación:** no meterlo en la fase 1, sino después de la fase 3 (reutilizaría sus curvas de saturación) o en la v2; la fase 1 se diseña para poder añadirlo (§9). Falta que P.P. elija qué partes y en qué fase. Solo comportamiento: ni código, ni nombres, ni interfaz (regla 8). |

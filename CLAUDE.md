@@ -23,9 +23,33 @@ La especificación completa (producto, arquitectura, módulos, fases y decisione
 
 ---
 
+## Acuerdos posteriores con P.P. (mismo valor que las reglas)
+
+Acordados durante la fase 0. Fechas y detalle en `docs/ESPECIFICACION.md` §12.
+
+1. **Plan por fases:** lo que se hace en cada módulo y en cada fase está en §9 de la especificación. Lo que no está en su fase no se hace.
+2. **Inicio de cada fase de módulo (1 a 4):**
+   - Lee la sección del módulo, sus pantallas de `docs/design/` y los manuales de sus plugins de referencia (`docs/referencias/README.md`).
+   - Después pregunta a P.P. las dudas de ese módulo, con una recomendación en cada una, y espera sus respuestas antes de programar.
+   - Las preguntas de un módulo no se adelantan a fases anteriores.
+3. **Referencias por módulo** (solo comportamiento, regla 8):
+   - EQ: Pro-Q 4, con Pro-Q 3 como apoyo.
+   - Compresor: Pro-C 2 (Pro-C 3 solo como contexto).
+   - Saturación multibanda: Saturn 2.
+   - Distorsión: Distructor de FL Studio, con Fruity Fast Dist, Fruity WaveShaper y Saturn 2 como apoyo.
+4. **Pendientes (§13):** no se implementan hasta que P.P. les asigne una fase. Lo que pida anotar va a §13; lo que pida investigar, a `docs/referencias/`.
+5. **Integración:**
+   - Una mejora cada vez: push y espera al CI completo en verde (Windows, Linux, pluginval e instalador) antes de la siguiente.
+   - Un push nuevo a la misma rama cancela la ejecución que esté en marcha.
+6. **Cierre de fase:** además de lo de la regla 2, el instalador `.exe` (artefacto `P.Melodies-windows-installer`) y, si el instalador cambia, sus pruebas manuales.
+7. **Material de terceros** (manuales, PDF, código): nunca se sube al repositorio. Se enlaza y se resume con palabras propias.
+
+---
+
 ## Referencia rápida (no forma parte de las reglas originales)
 
 - **Manuales de los plugins de referencia:** `docs/referencias/README.md`. Al empezar la fase de un módulo, lee su manual (solo comportamiento: regla 8).
+- **Red en Claude Code:** el entorno *P.Melodies* permite fabfilter.com. Para leer los manuales de FL Studio (fase 4) hará falta permitir image-line.com.
 - **Estado de las fases:** consulta `docs/ESPECIFICACION.md` §12 (decisiones aprobadas), §13 (pendientes sin fase asignada) y el historial de ramas `phase/*`.
 - **Configurar y compilar (Linux):**
   `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build`
