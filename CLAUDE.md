@@ -25,6 +25,7 @@ La especificación completa (producto, arquitectura, módulos, fases y decisione
 
 ## Referencia rápida (no forma parte de las reglas originales)
 
+- **Manuales de los plugins de referencia:** `docs/referencias/README.md`. Al empezar la fase de un módulo, lee su manual (solo comportamiento: regla 8).
 - **Estado de las fases:** consulta `docs/ESPECIFICACION.md` §12 (decisiones aprobadas), §13 (pendientes sin fase asignada) y el historial de ramas `phase/*`.
 - **Configurar y compilar (Linux):**
   `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build`

@@ -74,7 +74,7 @@ Fuente principal: el **manual oficial** (`ffvolcano3-manual.pdf`, leído el 2026
 | **Fuentes MIDI** | Controlar el EQ con el teclado o la rueda de modulación. | El plugin hoy no recibe MIDI (`NEEDS_MIDI_INPUT FALSE`). Cambiarlo afecta a cómo lo ve FL Studio. |
 | **Enrutado serie/paralelo y L/R o M/S por banda** | Más combinaciones de bandas. | **§10 deja fuera de la v1** el procesado Mid/Side. |
 | **Panorama por banda** (la frecuencia central baja en un canal y sube en el otro) | Efectos de ensanche e inclinación estéreo. | Necesita procesar cada canal por separado. |
-| **Ganancia y resonancia en un solo control** (al realzar más, la campana se estrecha y resuena más) | Realces más «analógicos» y agresivos. | En §4 la Q es independiente de la ganancia: sería un modo opcional por banda. |
+| **Ganancia y resonancia en un solo control** (al realzar más, la campana se estrecha y resuena más) | Realces más «analógicos» y agresivos. | En §4 la Q es independiente de la ganancia: sería un modo opcional por banda. Pro-Q 4 también tiene una interacción ganancia-Q opcional, más suave. |
 | **Retardo por banda** (hasta 50 ms, con bandas en paralelo) | Peine, Haas, chorus y flanger. | Lejos de un EQ: encajaría mejor en un módulo de efectos aparte. |
 
 ## Saturar la frecuencia realzada
