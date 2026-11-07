@@ -10,39 +10,57 @@ Volcano 3 (noviembre de 2021) es un **filtro creativo** con modulación, no un E
 
 ## Funciones
 
-Fuentes: la ayuda oficial de FabFilter, la nota de prensa y varias reseñas (lista al final). La web de FabFilter no se pudo abrir desde esta sesión, así que lo de la ayuda oficial viene de los extractos que dan los buscadores.
+Fuente principal: el **manual oficial** (`ffvolcano3-manual.pdf`, leído el 2026-11-07). Lo que sale solo de reseñas se indica.
 
 ### Filtros
 
-- **Hasta 4 filtros** a la vez.
-- **Formas:** pasa-bajos, pasa-altos, pasa-banda, campana, shelf grave, shelf agudo, notch y pasa-todo (*all-pass*).
-- **Pendientes:** de 6 a 48 dB/oct (las reseñas citan 12, 24 y 48; la ayuda oficial añade 6).
-- **Frecuencia, pico (resonancia) y ganancia** por filtro, editables arrastrando en la pantalla.
-- **Estilos de filtro:** 11 estilos que deciden cómo satura el filtro y cómo se comporta su resonancia. Van de uno completamente lineal, sin saturación, a otros muy agresivos. Con el pico alto, algunos **autooscilan** como los filtros analógicos clásicos, y hay un botón que silencia esa autooscilación cuando no hay señal de entrada. Incluso las campanas y los shelves son no lineales en los estilos con carácter.
-- **Drive:** hay uno global, que fija cuánto se excita la entrada de los filtros, y desde la versión 3 otro **por filtro** que ajusta la saturación interna de ese filtro. Así se puede saturar solo la zona que realza un filtro, y no toda la señal (ver la sección siguiente).
-- **Pico (*Peak*):** en pasa-bajos, pasa-altos y pasa-banda es la resonancia; en campana y shelves es la ganancia, y puede ser negativa.
-- **Panorama por filtro:** una reseña lo usa como un «tilt EQ estéreo»: un realce a 1 kHz en un canal y una octava más abajo en el otro.
+- **Hasta 4 filtros** a la vez, editables arrastrando en la pantalla (con analizador de espectro y teclado de piano opcional).
+- **Formas:** pasa-bajos, pasa-altos, pasa-banda, campana, shelf grave, shelf agudo, notch y pasa-todo.
+- **Pendientes:** 6, 12, 24 o 48 dB/oct.
+  - En campanas y shelves, la pendiente hace el filtro más ancho o más estrecho.
+  - Pasa-banda y notch no admiten 6 dB/oct.
+- **Controles por filtro:**
+  - **Frecuencia**, con un anillo de **panorama**: desplaza la frecuencia central hacia abajo en un canal y hacia arriba en el otro, para efectos estéreo.
+  - **Pico (*Peak*):** en pasa-bajos, pasa-altos y pasa-banda es la **resonancia**; con poca da tonos más cálidos y en lo más alto casi todos los estilos **autooscilan**. En campana y shelves controla **a la vez la ganancia y la resonancia**, y puede ser negativo.
+  - **Drive por filtro** (nuevo en la versión 3): ajusta la **saturación interna** de ese filtro.
+  - **Estilo** (ver abajo), **retardo** de salida de hasta 50 ms (para peine, Haas, chorus y flanger combinados con filtros en paralelo), **nivel y panorama** de salida, y botón de activar/anular.
+- **Drive global:** fija cuánto se excita la entrada de los filtros, de limpio a sucio. Además, subiendo la ganancia de entrada y bajando la de salida (±36 dB cada una) se sobrecargan los filtros.
+- **Estilos:** 11, que deciden el carácter de la saturación y de la resonancia. Incluso las campanas y los shelves son **muy no lineales** en todos ellos salvo el lineal. Resumen de lo que dice el manual:
+  1. el filtro original de su sintetizador FabFilter One;
+  2. suave y cremoso;
+  3. con mucha sobrecarga y carácter propio, para guitarras distorsionadas;
+  4. distorsión moderada con un silbido limpio;
+  5. distorsión moderada y jugosa, con bastante autooscilación en graves;
+  6. extremo, para ideas salvajes;
+  7. suave y limpio, de uso general;
+  8. válvula: más cálido, con buena sobrecarga, para sintetizadores;
+  9. metálico: más áspero y afilado;
+  10. una versión más suave del de válvula;
+  11. **lineal**: sin drive ni recorte.
+
+  Sus nombres no se pueden usar (regla 8).
 
 ### Enrutado y estéreo
 
-- **Serie, paralelo o mixto:** varios esquemas de conexión entre los 4 filtros.
-- **Estéreo, L/R o M/S:** en L/R y M/S, la mitad de los filtros va a un canal (izquierdo o *mid*) y la otra mitad al otro (derecho o *side*).
+- **Serie o paralelo:** el número de esquemas depende de cuántos filtros haya y del modo.
+- **Estéreo, L/R o M/S:** en L/R y M/S, la mitad de los filtros va a un canal (izquierdo o *mid*) y la otra mitad al otro (derecho o *side*); los filtros se crean y borran por parejas y el panorama por filtro se desactiva.
+- **Mezcla** seca/procesada global.
 
 ### Modulación
 
-- **Fuentes**, sin límite de número:
-  - **LFO por pasos** (hasta 16 pasos, con formas por paso).
-  - **Generador de envolvente**, disparado por el audio o por MIDI.
-  - **Seguidor de envolvente** de la entrada o del sidechain, con un modo *transitorio* que solo reacciona a golpes cortos (por ejemplo, la batería).
-  - **Fuentes MIDI** (rueda de modulación, controladores CC, notas).
-  - **Controladores XY.**
-- **Asignación arrastrando:** se arrastra un «cable» desde la fuente hasta el parámetro de destino (frecuencia, pico, drive…), con una cantidad por conexión.
-- **Visualización en vivo** de las fuentes y de cómo se mueven los parámetros modulados.
+- **Fuentes:**
+  - **XLFO:** LFO por pasos, añadiendo o quitando pasos libremente, con deslizamiento por paso, sincronía y disparo por notas MIDI (modo *Retrigger* o *Legato*).
+  - **Generador de envolvente** ADSR con curvas ajustables. Se dispara con la entrada principal, con el sidechain externo o con notas MIDI.
+  - **Seguidor de envolvente** del nivel o de los transitorios (modo *Transient*: solo responde a golpes cortos).
+  - **Fuentes MIDI** y hasta **6 controladores XY o deslizadores**.
+- **Destinos:** casi todos los parámetros de filtro (drive, frecuencia, pico, panorama, retardo, nivel y panorama de salida), además de la entrada, la salida y la mezcla.
+- **Asignación arrastrando** desde la fuente hasta el destino, con visualización en vivo de fuentes y destinos.
 
 ### Otros
 
-- **Modo de alta calidad** con oversampling 4x (en los estilos no lineales reduce el aliasing).
-- Deshacer, rehacer y A/B; presets.
+- **Alta calidad (*High Quality*):** oversampling de los algoritmos internos para reducir el aliasing de las no linealidades, a cambio de más CPU. El manual no da el factor (una reseña habla de 4x) ni menciona la latencia.
+- **Silencio automático de la autooscilación (*Auto Mute Self-Osc*):** silencia la autooscilación cuando la entrada de los filtros queda en silencio; si no, con el pico al máximo, los filtros seguirían sonando tras parar el audio.
+- Bypass global sin clics, deshacer, rehacer, A/B y presets.
 
 ## Qué encajaría en el EQ de P.Melodies
 
@@ -55,7 +73,9 @@ Fuentes: la ayuda oficial de FabFilter, la nota de prensa y varias reseñas (lis
 | **Modulación de los parámetros de banda** (LFO, envolvente, seguidor, MIDI) | Barridos y movimiento automáticos sin dibujar automatización en FL Studio. | **§10 deja fuera de la v1** la modulación y el EQ dinámico (un seguidor de envolvente sobre la ganancia es un EQ dinámico). |
 | **Fuentes MIDI** | Controlar el EQ con el teclado o la rueda de modulación. | El plugin hoy no recibe MIDI (`NEEDS_MIDI_INPUT FALSE`). Cambiarlo afecta a cómo lo ve FL Studio. |
 | **Enrutado serie/paralelo y L/R o M/S por banda** | Más combinaciones de bandas. | **§10 deja fuera de la v1** el procesado Mid/Side. |
-| **Panorama por banda** | Efectos de ensanche e inclinación estéreo. | Necesita procesar cada canal por separado. |
+| **Panorama por banda** (la frecuencia central baja en un canal y sube en el otro) | Efectos de ensanche e inclinación estéreo. | Necesita procesar cada canal por separado. |
+| **Ganancia y resonancia en un solo control** (al realzar más, la campana se estrecha y resuena más) | Realces más «analógicos» y agresivos. | En §4 la Q es independiente de la ganancia: sería un modo opcional por banda. |
+| **Retardo por banda** (hasta 50 ms, con bandas en paralelo) | Peine, Haas, chorus y flanger. | Lejos de un EQ: encajaría mejor en un módulo de efectos aparte. |
 
 ## Saturar la frecuencia realzada
 
@@ -63,11 +83,16 @@ Investigación añadida el 2026-11-07, a petición de P.P.
 
 ### Qué hace Volcano 3
 
-- **Saturación dentro del filtro:** los filtros no son lineales, tampoco las campanas ni los shelves (salvo el estilo lineal). La saturación ocurre *dentro* del filtro, no antes ni después. Por eso lo que se distorsiona es sobre todo lo que el filtro realza: la zona de la campana o el pico de resonancia. El resto del espectro queda casi limpio.
-- **Depende del nivel:** cuanto más fuerte llega la señal a esa frecuencia, y cuanto más alto el drive del filtro o el pico, más satura. Es como un filtro analógico llevado al límite.
-- **El estilo decide el carácter** de la saturación: desde suave y redonda hasta áspera y metálica.
-- **Ejemplo real (reseña de Mix):** una campana a 770 Hz con un estilo agresivo y drive +2 dB, sobre un bajo, para darle mordida a esa zona.
-- **Lo que no se publica:** FabFilter no explica la técnica interna. Lo siguiente es una propuesta propia basada en literatura pública de DSP.
+Según el manual:
+
+- **La saturación está dentro del filtro:** cada filtro tiene su **drive** propio, que ajusta su «saturación interna», y los filtros son no lineales incluso en campana y shelf (salvo el estilo lineal).
+- **En campana y shelf, el pico controla a la vez la ganancia y la resonancia.** El realce sale de la resonancia del propio filtro no lineal.
+- **El estilo decide cómo satura:** de suave y cremoso a metálico y áspero.
+- **El oversampling (*High Quality*) existe** precisamente para el aliasing que generan esas no linealidades.
+
+Deducción (FabFilter no publica la técnica interna): si el realce es la resonancia de un filtro que satura por dentro, lo que más se distorsiona es justo **la frecuencia realzada**, y más cuanto más fuerte llega o más alto está el pico. El resto del espectro pasa casi limpio. Es el comportamiento de un filtro analógico llevado al límite: se parece a la opción B de abajo.
+
+**Ejemplo real (reseña de Mix):** una campana a 770 Hz con un estilo agresivo y drive +2 dB, sobre un bajo, para darle mordida a esa zona.
 
 ### Cómo se podría hacer en P.Melodies
 
@@ -84,10 +109,12 @@ Investigación añadida el 2026-11-07, a petición de P.P.
 - **Cortes:** saturar una banda que atenúa no tiene un sentido claro. Propuesta: solo en realces (decisión de P.P.).
 - **Curvas de saturación:** se pueden reutilizar las de la saturación multibanda (fase 3) cuando existan. Por eso tiene sentido hacerlo después de la fase 3.
 
-**B. Saturación dentro de la realimentación de resonancia** (para pasa-bajos y pasa-altos con pico):
+**B. Saturación dentro del filtro resonante**, para pasa-bajos y pasa-altos con pico y, al estilo de Volcano, también para campanas y shelves cuyo realce sale de la resonancia:
 
-- **Cómo:** se mete la curva de saturación en el lazo de resonancia de un filtro de estado variable (SVF) o tipo *ladder*. Es lo que hacen los filtros analógicos de sintetizador.
-- **Efecto:** el pico de resonancia se comprime y se ensucia al subir el nivel, y la autooscilación queda acotada sola.
+- **Cómo:** se mete la curva de saturación en el lazo de resonancia (y en los integradores) de un filtro de estado variable (SVF) o tipo *ladder*. Es lo que hacen los filtros analógicos de sintetizador.
+- **Efecto:**
+  - El pico se comprime y se ensucia al subir el nivel, y la autooscilación queda acotada sola.
+  - La curva cambia con el nivel: más analógico, pero menos predecible que la opción A.
 - **Coste:**
   - Es más complejo: el lazo sin retardo con una no linealidad exige resolver una ecuación en cada muestra (Newton-Raphson o aproximaciones).
   - Usa más CPU.
@@ -133,6 +160,7 @@ Aunque se deje para más adelante, la fase 1 puede diseñarse para no cerrar la 
 
 ## Fuentes
 
+- FabFilter, *Volcano 3 User Manual* ([PDF](https://www.fabfilter.com/downloads/pdf/help/ffvolcano3-manual.pdf)): fuente principal.
 - FabFilter, ayuda en línea de Volcano 3: [controles de los filtros](https://fabfilter.com/help/volcano/using/filtercontrols), [seguidor de envolvente](https://www.fabfilter.com/help/volcano/using/ef) y [ayuda general](https://fabfilter.com/help/volcano).
 - Nota de prensa: [Sonicstate, 2021-11-19](https://sonicstate.com/amped/2021/11/19/fabfilter-releases-fabfilter-volcano-3/) y [Recording Magazine](https://www.recordingmag.com/news/fabfilter-releases-fabfilter-volcano-3/).
 - Reseñas: [MusicTech](https://musictech.com/reviews/plug-ins/fabfilter-volcano-3-review/), [Mix (Barry Rudolph)](https://www.mixonline.com/technology/reviews/plug-ins/fabfilter-volcano-3-plug-in-a-real-world-review) y [su versión en barryrudolph.com](https://barryrudolph.com/mix/fab_filter_volcano3.html), [Producer Sphere](https://producersphere.com/fabfilter-volcano-3-review), [MusicRadar](https://www.musicradar.com/news/fabfilter-volcano-3-plugin), [notas de versión (Toolfarm)](https://www.toolfarm.com/?p=16612).
