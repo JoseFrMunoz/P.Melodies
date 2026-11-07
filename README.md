@@ -48,6 +48,7 @@ En Linux hacen falta además las cabeceras de ALSA, FreeType, Fontconfig y X11 (
 - [`docs/arquitectura.md`](docs/arquitectura.md): cómo está organizado el código, latencia, hilos y tests.
 - [`docs/dsp/`](docs/dsp/): decisiones de DSP y referencias.
 - [`docs/design/`](docs/design/): referencias visuales de la interfaz.
+- [`docs/referencias/`](docs/referencias/): investigación de plugins de referencia para funciones pendientes.
 - [`CLAUDE.md`](CLAUDE.md): reglas de trabajo del proyecto.
 
 ## English
