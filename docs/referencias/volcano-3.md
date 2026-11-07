@@ -19,7 +19,8 @@ Fuentes: la ayuda oficial de FabFilter, la nota de prensa y varias reseñas (lis
 - **Pendientes:** de 6 a 48 dB/oct (las reseñas citan 12, 24 y 48; la ayuda oficial añade 6).
 - **Frecuencia, pico (resonancia) y ganancia** por filtro, editables arrastrando en la pantalla.
 - **Estilos de filtro:** 11 estilos que deciden cómo satura el filtro y cómo se comporta su resonancia. Van de uno completamente lineal, sin saturación, a otros muy agresivos. Con el pico alto, algunos **autooscilan** como los filtros analógicos clásicos, y hay un botón que silencia esa autooscilación cuando no hay señal de entrada. Incluso las campanas y los shelves son no lineales en los estilos con carácter.
-- **Drive por filtro:** cada filtro tiene su propio circuito de saturación ajustable.
+- **Drive:** hay uno global, que fija cuánto se excita la entrada de los filtros, y desde la versión 3 otro **por filtro** que ajusta la saturación interna de ese filtro. Así se puede saturar solo la zona que realza un filtro, y no toda la señal (ver la sección siguiente).
+- **Pico (*Peak*):** en pasa-bajos, pasa-altos y pasa-banda es la resonancia; en campana y shelves es la ganancia, y puede ser negativa.
 - **Panorama por filtro:** una reseña lo usa como un «tilt EQ estéreo»: un realce a 1 kHz en un canal y una octava más abajo en el otro.
 
 ### Enrutado y estéreo
@@ -56,6 +57,62 @@ Fuentes: la ayuda oficial de FabFilter, la nota de prensa y varias reseñas (lis
 | **Enrutado serie/paralelo y L/R o M/S por banda** | Más combinaciones de bandas. | **§10 deja fuera de la v1** el procesado Mid/Side. |
 | **Panorama por banda** | Efectos de ensanche e inclinación estéreo. | Necesita procesar cada canal por separado. |
 
+## Saturar la frecuencia realzada
+
+Investigación añadida el 2026-11-07, a petición de P.P.
+
+### Qué hace Volcano 3
+
+- **Saturación dentro del filtro:** los filtros no son lineales, tampoco las campanas ni los shelves (salvo el estilo lineal). La saturación ocurre *dentro* del filtro, no antes ni después. Por eso lo que se distorsiona es sobre todo lo que el filtro realza: la zona de la campana o el pico de resonancia. El resto del espectro queda casi limpio.
+- **Depende del nivel:** cuanto más fuerte llega la señal a esa frecuencia, y cuanto más alto el drive del filtro o el pico, más satura. Es como un filtro analógico llevado al límite.
+- **El estilo decide el carácter** de la saturación: desde suave y redonda hasta áspera y metálica.
+- **Ejemplo real (reseña de Mix):** una campana a 770 Hz con un estilo agresivo y drive +2 dB, sobre un bajo, para darle mordida a esa zona.
+- **Lo que no se publica:** FabFilter no explica la técnica interna. Lo siguiente es una propuesta propia basada en literatura pública de DSP.
+
+### Cómo se podría hacer en P.Melodies
+
+**A. Saturar solo la parte que suma la campana (o el shelf).** Es la opción recomendada.
+
+- **La idea:** un filtro de campana de 2.º orden se puede escribir exactamente como *la entrada más una componente pasa-banda escalada por la ganancia* (descomposición de Regalia y Mitra). Esa componente es justo «lo que añade el realce».
+- **El procesado:** se satura esa componente y se suma a la entrada limpia: `salida = entrada + S(realce)`.
+- **Propiedades:**
+  - Con el drive a 0, `S` no actúa y el resultado es bit a bit el del EQ lineal: se puede comprobar con un test.
+  - A volumen bajo, la curva es la misma que sin saturación.
+  - Solo se distorsiona el contenido de la banda realzada, y más cuanto más fuerte llega: el comportamiento de Volcano.
+  - Los armónicos nuevos (2f, 3f…) salen de la frecuencia realzada.
+- **Shelves:** se descomponen igual, en entrada más componente de realce.
+- **Cortes:** saturar una banda que atenúa no tiene un sentido claro. Propuesta: solo en realces (decisión de P.P.).
+- **Curvas de saturación:** se pueden reutilizar las de la saturación multibanda (fase 3) cuando existan. Por eso tiene sentido hacerlo después de la fase 3.
+
+**B. Saturación dentro de la realimentación de resonancia** (para pasa-bajos y pasa-altos con pico):
+
+- **Cómo:** se mete la curva de saturación en el lazo de resonancia de un filtro de estado variable (SVF) o tipo *ladder*. Es lo que hacen los filtros analógicos de sintetizador.
+- **Efecto:** el pico de resonancia se comprime y se ensucia al subir el nivel, y la autooscilación queda acotada sola.
+- **Coste:**
+  - Es más complejo: el lazo sin retardo con una no linealidad exige resolver una ecuación en cada muestra (Newton-Raphson o aproximaciones).
+  - Usa más CPU.
+  - Es más difícil de probar con exactitud que la opción A.
+
+**Aliasing (en ambas opciones).** Los armónicos nuevos se pliegan por debajo de Nyquist (aliasing) si la banda está alta. Hay dos caminos, y es una decisión que cambia la latencia:
+
+1. **Oversampling** (ya existe en la fase 0):
+   - Es lo más limpio.
+   - Añade latencia, y por la decisión de §12 la latencia declarada debe ser siempre la máxima. El EQ dejaría de ser de latencia cero incluso con la saturación apagada.
+2. **ADAA** (*antiderivative antialiasing*):
+   - Reduce el aliasing sin oversampling y casi sin latencia (media muestra en la versión de 1.er orden).
+   - Esa media muestra desalinea un poco el realce respecto a la entrada limpia. Habría que compensarla o aceptarla y medirla.
+
+### Cómo se probaría
+
+Con las herramientas de medida de la fase 0 (`tests/Measurement.h`):
+
+- **Drive a 0:** salida idéntica al EQ lineal, bit a bit.
+- **Nivel bajo:** la respuesta coincide con la curva lineal con una tolerancia de 0,1 dB.
+- **Tono en la frecuencia central:** la THD sube con el drive y con el nivel de entrada.
+- **Tono a dos octavas de la banda:** sin distorsión medible (por debajo de −100 dB). Esto confirma que solo satura la zona realzada.
+- **Aliasing:** por debajo del umbral que se fije, con la técnica elegida.
+- **Valores extremos:** sin NaN, Inf ni inestabilidad con ganancia, Q y drive al máximo.
+
 ## Cómo dejarlo preparado sin implementarlo
 
 Aunque se deje para más adelante, la fase 1 puede diseñarse para no cerrar la puerta (§10: «diseña el código para que estas mejoras se puedan añadir sin reescribir lo existente»):
@@ -69,9 +126,21 @@ Aunque se deje para más adelante, la fase 1 puede diseñarse para no cerrar la 
 1. **Qué partes interesan:** estilos, drive, autooscilación, modulación, MIDI, enrutado o panorama.
 2. **Cuándo:** como ampliación del EQ en la fase 1, como fase propia tras la 1.0.0 o en la v2 junto con lo que ya está en §10.
 3. **Si se acepta latencia en el EQ** cuando se use un estilo no lineal (oversampling), o si esos estilos se quedan sin oversampling.
+4. **Saturación de la frecuencia realzada:**
+   - si se satura solo en realces o también en cortes;
+   - si se hace con la opción A (realce de campana y shelves), con la B (resonancia) o con ambas;
+   - si el aliasing se trata con oversampling (con latencia) o con ADAA (sin latencia).
 
 ## Fuentes
 
 - FabFilter, ayuda en línea de Volcano 3: [controles de los filtros](https://fabfilter.com/help/volcano/using/filtercontrols), [seguidor de envolvente](https://www.fabfilter.com/help/volcano/using/ef) y [ayuda general](https://fabfilter.com/help/volcano).
 - Nota de prensa: [Sonicstate, 2021-11-19](https://sonicstate.com/amped/2021/11/19/fabfilter-releases-fabfilter-volcano-3/) y [Recording Magazine](https://www.recordingmag.com/news/fabfilter-releases-fabfilter-volcano-3/).
-- Reseñas: [MusicTech](https://musictech.com/reviews/plug-ins/fabfilter-volcano-3-review/), [Mix (Barry Rudolph)](https://www.mixonline.com/technology/reviews/plug-ins/fabfilter-volcano-3-plug-in-a-real-world-review), [Producer Sphere](https://producersphere.com/fabfilter-volcano-3-review), [MusicRadar](https://www.musicradar.com/news/fabfilter-volcano-3-plugin).
+- Reseñas: [MusicTech](https://musictech.com/reviews/plug-ins/fabfilter-volcano-3-review/), [Mix (Barry Rudolph)](https://www.mixonline.com/technology/reviews/plug-ins/fabfilter-volcano-3-plug-in-a-real-world-review) y [su versión en barryrudolph.com](https://barryrudolph.com/mix/fab_filter_volcano3.html), [Producer Sphere](https://producersphere.com/fabfilter-volcano-3-review), [MusicRadar](https://www.musicradar.com/news/fabfilter-volcano-3-plugin), [notas de versión (Toolfarm)](https://www.toolfarm.com/?p=16612).
+
+Técnicas de DSP (literatura pública, para la propuesta propia):
+
+- P. A. Regalia, S. K. Mitra, "Tunable Digital Frequency Response Equalization Filters", *IEEE Transactions on Acoustics, Speech, and Signal Processing* 35(1), 1987: campana como entrada más una componente pasa-banda.
+- U. Zölzer (ed.), *DAFX: Digital Audio Effects*, 2.ª ed., Wiley, 2011: filtros de ecualización paramétrica y procesado no lineal.
+- V. Zavalishin, *The Art of VA Filter Design*, Native Instruments, 2.ª ed., 2018: filtros SVF y *ladder* sin retardo en el lazo, también no lineales.
+- A. Huovilainen, "Non-Linear Digital Implementation of the Moog Ladder Filter", *DAFx-04*, 2004: saturación dentro del lazo de resonancia.
+- J. D. Parker, V. Zavalishin, E. Le Bivic, "Reducing the Aliasing of Nonlinear Waveshaping Using Continuous-Time Convolution", *DAFx-16*, 2016, y S. Bilbao, F. Esqueda, J. D. Parker, V. Välimäki, "Antiderivative Antialiasing for Memoryless Nonlinearities", *IEEE Signal Processing Letters* 24(7), 2017: ADAA.
