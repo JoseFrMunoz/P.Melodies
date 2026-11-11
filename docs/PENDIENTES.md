@@ -19,4 +19,4 @@ Ideas de nuevos módulos para P.Melodies. **No se implementan todavía**: cada u
 
 ## Ya previsto para la v2
 
-Recogido en la sección 10 de [`PROMPT.md`](../PROMPT.md): EQ dinámico, fases lineal y natural, Mid/Side, EQ match, modulación en la saturación, vista de módulos apilados con scroll y macOS.
+Recogido en la sección 10 de [`ESPECIFICACION.md`](ESPECIFICACION.md#10-fuera-de-alcance-de-la-v1-no-implementar): EQ dinámico, fases lineal y natural, Mid/Side, EQ match, modulación en la saturación, vista de módulos apilados con scroll y macOS.

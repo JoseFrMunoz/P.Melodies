@@ -1,0 +1,21 @@
+# Build trees
+/build*/
+/out/
+/cmake-build-*/
+
+# IDE / editor
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+
+# CMake / tooling
+CMakeUserPresets.json
+compile_commands.json
+.cache/
+
+# Test & validation output
+/Testing/
+pluginval-logs/

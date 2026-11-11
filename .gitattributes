@@ -1,0 +1,3 @@
+# Inno Setup files keep Windows line endings.
+installer/*.iss text eol=crlf
+installer/*.txt text eol=crlf
