@@ -233,6 +233,64 @@ TEST_CASE ("Footer shows the latency the plugin reports", "[ui][footer][phase0]"
     processor.editorBeingDeleted (editor.get());
 }
 
+TEST_CASE ("Footer: dragging the Mix knob changes the mix the audio engine applies", "[ui][footer][phase0]")
+{
+    // Reported in the phase 0 review: "the Mix does not work". In phase 0 every module passes the
+    // audio through, so processed and original are the same signal and any mix sounds identical.
+    // This test follows the whole path with real mouse events and a module that does change the
+    // audio: knob → parameter → snapshot the engine reads → blended output.
+    PMelodiesProcessor processor;
+    auto editor = std::unique_ptr<juce::AudioProcessorEditor> (processor.createEditorAndMakeActive());
+    auto& footer = dynamic_cast<PMelodiesEditor&> (*editor).getFooter();
+
+    ui::Knob* mixKnob = nullptr;
+    forEachDescendant (footer, [&] (juce::Component& c)
+                       {
+                           if (auto* k = dynamic_cast<ui::Knob*> (&c); k != nullptr && &k->getParameter() == &get (processor, param::id::mix))
+                               mixKnob = k;
+                       });
+    REQUIRE (mixKnob != nullptr);
+    CHECK (mixKnob->getValueText() == "100 %");
+
+    // Drag down 100 px: half of the full range (200 px), so 100 % → 50 %.
+    auto source = juce::Desktop::getInstance().getMainMouseSource();
+    const auto start = mixKnob->getLocalBounds().getCentre().toFloat();
+    const auto now = juce::Time::getCurrentTime();
+    const auto event = [&] (juce::Point<float> position, bool dragged)
+    {
+        return juce::MouseEvent (source, position, juce::ModifierKeys::leftButtonModifier, juce::MouseInputSource::defaultPressure,
+                                 0.0f, 0.0f, 0.0f, 0.0f, mixKnob, mixKnob, now, start, now, 1, dragged);
+    };
+    mixKnob->mouseDown (event (start, false));
+    mixKnob->mouseDrag (event (start + juce::Point<float> (0.0f, 50.0f), true));
+    mixKnob->mouseDrag (event (start + juce::Point<float> (0.0f, 100.0f), true));
+    mixKnob->mouseUp (event (start + juce::Point<float> (0.0f, 100.0f), true));
+
+    CHECK (valueOf (processor, param::id::mix) == Catch::Approx (50.0f));
+    CHECK (mixKnob->getValueText() == "50 %");
+
+    auto p = param::ParameterReader (processor.getState()).read();
+    CHECK (p.mix == Catch::Approx (0.5f));
+
+    // A module that doubles the level (as a +6 dB EQ band will in phase 1): 50 % gives 1.5x.
+    auto settings = neutralSettings();
+    settings[0].neutral = false;
+    settings[0].gain = 2.0f;
+    p.clipperEnabled = false;
+    AudioEngine engine (testFactory (settings));
+    engine.prepare (48000.0, 512, 2, p);
+    const auto latency = engine.getLatencySamples();
+    const auto input = makeNoise (2, 20000, 0.2f);
+    const auto out = runEngine (engine, input, blockSizes (20000, 512), p);
+
+    float error = 0.0f;
+    for (int i = latency + 2000; i < 20000; ++i)
+        error = juce::jmax (error, std::abs (out.getSample (0, i) - 1.5f * input.getSample (0, i - latency)));
+    CHECK (error < 1.0e-6f);
+
+    processor.editorBeingDeleted (editor.get());
+}
+
 TEST_CASE ("Every interactive control has a help tooltip", "[ui][tooltips][phase0]")
 {
     PMelodiesProcessor processor;
