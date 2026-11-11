@@ -81,6 +81,9 @@ public:
 
     ModuleChain& getChain() noexcept { return chain; }
 
+    /** The EQ's spectrum analyser feed (read by the interface). */
+    dsp::AnalyzerTap& getEqAnalyzer() noexcept { return eqAnalyzer; }
+
     /** Size of the internal processing blocks for a given host block size. */
     static int internalBlockSizeFor (int hostBlockSize) noexcept;
 
@@ -103,6 +106,7 @@ private:
     GainSmoother inputGain, outputGain, ceilingGain, matchGain;
     LinearSmoother mix, compareFade, clipperFade, bypassFade;
 
+    dsp::AnalyzerTap eqAnalyzer;
     dsp::LoudnessMatcher loudness;
     dsp::LevelMeter inputLevel, outputLevel;
     dsp::MeterReadout inputMeter, outputMeter;

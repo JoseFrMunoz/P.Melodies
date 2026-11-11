@@ -6,6 +6,7 @@
 
 #include "core/Module.h"
 #include "core/ModuleParameters.h"
+#include "dsp/AnalyzerTap.h"
 #include "dsp/DelayLine.h"
 #include "dsp/OversamplingEngine.h"
 
@@ -51,6 +52,13 @@ public:
         part; it must not allocate. Both module sets of the chain receive them.
     */
     virtual void setParameters (const ModuleParameters& /*parameters*/) noexcept {}
+
+    /**
+        Spectrum analyser feed (the EQ's). The chain enables it only on the module set that is
+        heard, so the FIFO has a single producer.
+    */
+    void setAnalyzerTap (dsp::AnalyzerTap* tap) noexcept { analyzerTap = tap; }
+    void setAnalyzerListening (bool shouldListen) noexcept { analyzerListening = shouldListen; }
 
     /** Global quality floor (factor index, 0 = 1x … 4 = 16x). Ignored by modules without oversampling. */
     void setMinimumOversamplingIndex (int index) noexcept;
@@ -126,6 +134,8 @@ private:
     int preRollSamples = 0;
 
     bool bypassed = false;
+    dsp::AnalyzerTap* analyzerTap = nullptr;
+    bool analyzerListening = false;
     int minimumOversamplingIndex = 0;
     int activeOversamplingIndex = 0;
 

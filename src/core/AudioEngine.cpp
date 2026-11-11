@@ -23,7 +23,10 @@ bool isSettledAt (const juce::SmoothedValue<float, juce::ValueSmoothingTypes::Li
 }
 } // namespace
 
-AudioEngine::AudioEngine (const ModuleChain::Factory& factory) : chain (factory) {}
+AudioEngine::AudioEngine (const ModuleChain::Factory& factory) : chain (factory)
+{
+    chain.setAnalyzerTap (ModuleId::eq, &eqAnalyzer);
+}
 
 int AudioEngine::internalBlockSizeFor (int hostBlockSize) noexcept
 {
@@ -43,6 +46,8 @@ void AudioEngine::prepare (double newSampleRate, int hostBlockSize, int numChann
     const juce::dsp::ProcessSpec spec { newSampleRate, (juce::uint32) internalBlockSize, (juce::uint32) numPreparedChannels };
     chain.setOrder (initial.chainOrder);
     chain.prepare (spec);
+    // A quarter of a second: plenty for an interface that reads 30 times a second.
+    eqAnalyzer.prepare (newSampleRate, juce::nextPowerOfTwo ((int) (0.25 * newSampleRate)));
 
     const auto latency = chain.getLatencySamples();
     latencySamples.store (latency);

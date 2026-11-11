@@ -50,6 +50,9 @@ public:
 
     void setModuleBypassed (ModuleId id, bool shouldBeBypassed) noexcept;
     void setModuleParameters (const ModuleParameters& parameters) noexcept;
+
+    /** Connects a module's analyser feed (both sets; only the heard set pushes). */
+    void setAnalyzerTap (ModuleId id, dsp::AnalyzerTap* tap) noexcept;
     void setMinimumOversamplingIndex (int index) noexcept;
 
     /** Module of the active set (for state queries; process() owns it on the audio thread). */

@@ -23,6 +23,7 @@ PMelodiesProcessor::PMelodiesProcessor()
       state (*this, nullptr, stateType, param::createLayout()),
       reader (state)
 {
+    applyEqAnalyzer();
 }
 
 const juce::String PMelodiesProcessor::getName() const
@@ -116,6 +117,35 @@ void PMelodiesProcessor::setSelectedModule (ModuleId id)
     state.state.setProperty (selectedModuleProperty, toIndex (id), nullptr);
 }
 
+PMelodiesProcessor::EqAnalyzer PMelodiesProcessor::getEqAnalyzer() const
+{
+    const int value = state.state.getProperty (eqAnalyzerProperty, (int) EqAnalyzer::post);
+    return (EqAnalyzer) juce::jlimit (0, 2, value);
+}
+
+void PMelodiesProcessor::setEqAnalyzer (EqAnalyzer mode)
+{
+    state.state.setProperty (eqAnalyzerProperty, (int) mode, nullptr);
+    applyEqAnalyzer();
+}
+
+void PMelodiesProcessor::applyEqAnalyzer()
+{
+    using Point = dsp::AnalyzerTap::Point;
+    const auto mode = getEqAnalyzer();
+    engine.getEqAnalyzer().setPoint (mode == EqAnalyzer::pre ? Point::pre : mode == EqAnalyzer::post ? Point::post : Point::off);
+}
+
+bool PMelodiesProcessor::isEqRangeWide() const
+{
+    return (bool) state.state.getProperty (eqRangeProperty, false);
+}
+
+void PMelodiesProcessor::setEqRangeWide (bool wide)
+{
+    state.state.setProperty (eqRangeProperty, wide, nullptr);
+}
+
 void PMelodiesProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto tree = state.copyState();
@@ -136,6 +166,7 @@ void PMelodiesProcessor::setStateInformation (const void* data, int sizeInBytes)
     auto tree = juce::ValueTree::fromXml (*xml);
     migrateState (tree, *this);
     state.replaceState (tree);
+    applyEqAnalyzer();
 }
 
 void PMelodiesProcessor::migrateState (juce::ValueTree& tree, const juce::AudioProcessor& processor)

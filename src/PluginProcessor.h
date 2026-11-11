@@ -28,6 +28,16 @@ public:
     static inline const juce::Identifier stateVersionProperty { "stateVersion" };
     static inline const juce::Identifier pluginVersionProperty { "pluginVersion" };
     static inline const juce::Identifier selectedModuleProperty { "selectedModule" };
+    static inline const juce::Identifier eqAnalyzerProperty { "eqAnalyzer" };
+    static inline const juce::Identifier eqRangeProperty { "eqRange" };
+
+    /** EQ analyser source, as in the selector: Pre, Post or Off. */
+    enum class EqAnalyzer
+    {
+        pre = 0,
+        post = 1,
+        off = 2
+    };
 
     PMelodiesProcessor();
     ~PMelodiesProcessor() override = default;
@@ -69,6 +79,15 @@ public:
     void setSelectedModule (ModuleId id);
 
     /**
+        EQ display settings (§12): saved with the project, not plugin parameters, and loading a
+        preset does not change them. Message thread.
+    */
+    EqAnalyzer getEqAnalyzer() const;
+    void setEqAnalyzer (EqAnalyzer mode);
+    bool isEqRangeWide() const; // ±30 dB instead of ±12 dB
+    void setEqRangeWide (bool wide);
+
+    /**
         Band heard in solo in the EQ (-1 for none). Interface state, not a plugin parameter: it is
         not automated and not saved (§12). Any thread.
     */
@@ -83,6 +102,7 @@ public:
 
 private:
     static BusesProperties makeBusesProperties();
+    void applyEqAnalyzer();
 
     juce::AudioProcessorValueTreeState state;
     std::atomic<int> eqSoloBand { -1 };

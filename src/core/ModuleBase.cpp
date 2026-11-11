@@ -189,6 +189,10 @@ void ModuleBase::process (juce::dsp::AudioBlock<float> block, const SidechainBlo
 
     block = block.getSubsetChannelBlock (0, numChannels);
 
+    const auto tap = analyzerListening ? analyzerTap : nullptr;
+    if (tap != nullptr)
+        tap->push (block, dsp::AnalyzerTap::Point::pre);
+
     // 1. Latency-aligned dry path (read before the block is overwritten).
     auto dry = juce::dsp::AudioBlock<float> (dryBuffer).getSubsetChannelBlock (0, numChannels).getSubBlock (0, numSamples);
     dryDelay.process (juce::dsp::AudioBlock<const float> (block), dry);
@@ -199,6 +203,8 @@ void ModuleBase::process (juce::dsp::AudioBlock<float> block, const SidechainBlo
     if (stage == Stage::disengaged)
     {
         block.copyFrom (dry);
+        if (tap != nullptr)
+            tap->push (block, dsp::AnalyzerTap::Point::post);
         return;
     }
 
@@ -211,7 +217,11 @@ void ModuleBase::process (juce::dsp::AudioBlock<float> block, const SidechainBlo
 
     // 4. Fade between dry and wet.
     if (stage == Stage::engaged)
+    {
+        if (tap != nullptr)
+            tap->push (block, dsp::AnalyzerTap::Point::post);
         return;
+    }
 
     for (size_t i = 0; i < numSamples; ++i)
     {
@@ -228,6 +238,9 @@ void ModuleBase::process (juce::dsp::AudioBlock<float> block, const SidechainBlo
                 out[i] = d + g * (out[i] - d);
         }
     }
+
+    if (tap != nullptr)
+        tap->push (block, dsp::AnalyzerTap::Point::post);
 }
 
 void ModuleBase::copyStateFrom (const ModuleBase& other) noexcept

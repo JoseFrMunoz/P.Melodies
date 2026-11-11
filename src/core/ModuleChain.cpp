@@ -76,6 +76,12 @@ void ModuleChain::setModuleParameters (const ModuleParameters& parameters) noexc
             module->setParameters (parameters);
 }
 
+void ModuleChain::setAnalyzerTap (ModuleId id, dsp::AnalyzerTap* tap) noexcept
+{
+    for (auto& set : sets)
+        set[(size_t) toIndex (id)]->setAnalyzerTap (tap);
+}
+
 void ModuleChain::setMinimumOversamplingIndex (int index) noexcept
 {
     for (auto& set : sets)
@@ -89,7 +95,11 @@ void ModuleChain::runSet (int setIndex, int orderIndex, juce::dsp::AudioBlock<fl
     const auto order = chain::decode (orderIndex);
 
     for (auto id : order)
-        sets[(size_t) setIndex][(size_t) toIndex (id)]->process (block, sidechain);
+    {
+        auto& module = *sets[(size_t) setIndex][(size_t) toIndex (id)];
+        module.setAnalyzerListening (setIndex == activeSet);
+        module.process (block, sidechain);
+    }
 }
 
 void ModuleChain::beginTransition() noexcept
