@@ -326,22 +326,71 @@ void EqGraph::beginSolo (int index)
 {
     if (index < 0 || ! controller.getBand (index).active)
         return;
-    if (soloBand < 0)
-        soloPrevious = controller.getSoloBand();
+    if (soloBand >= 0)
+        endSolo();
+    soloPrevious = controller.getSoloBand();
     soloBand = index;
     controller.setSoloBand (index);
+
+    const auto settings = controller.getBand (index).settings;
+    soloStartX = xForFrequency (settings.frequency);
+    soloQ = settings.q;
+    soloLastOffset = {};
+    controller.beginGesture (index, EqField::frequency);
+    controller.beginGesture (index, EqField::q);
     bandsChanged();
 }
 
-void EqGraph::soloDragTo (juce::Point<float>, bool)
+void EqGraph::soloDragTo (juce::Point<float> offset, bool changeQ)
 {
-    // Moving the band while soloing comes in the next step of P.P.'s review.
+    if (soloBand < 0)
+        return;
+
+    // Horizontal: the frequency, from where the press started (the vertical alone does nothing).
+    const auto hz = juce::jlimit (dsp::eq::minFrequency, dsp::eq::maxFrequency, frequencyForX (soloStartX + offset.x));
+    controller.setValueInGesture (soloBand, EqField::frequency, (float) hz);
+
+    // Ctrl: the vertical movement narrows (up) or widens (down) what is heard.
+    const auto delta = offset - soloLastOffset;
+    soloLastOffset = offset;
+    const auto settings = controller.getBand (soloBand).settings;
+    if (changeQ && dsp::eq::usesQ (settings.type, settings.slopeIndex) && ! juce::exactlyEqual (delta.y, 0.0f))
+    {
+        soloQ = clampQ (soloQ * std::pow (2.0, -delta.y / 40.0));
+        controller.setValueInGesture (soloBand, EqField::q, (float) soloQ);
+    }
+    bandsChanged();
+}
+
+juce::Range<double> EqGraph::soloRangeHz() const
+{
+    const auto band = controller.getSoloBand();
+    if (band < 0 || ! controller.getBand (band).active)
+        return {};
+    const auto solo = eq::soloSettings (controller.getBand (band).settings);
+    switch (solo.type)
+    {
+        case FilterType::highCut: return { minDisplayHz, solo.frequency }; // the lows: low shelf and low cut
+        case FilterType::lowCut:  return { solo.frequency, maxDisplayHz }; // the highs
+        case FilterType::bell:
+        case FilterType::lowShelf:
+        case FilterType::highShelf:
+        case FilterType::notch:
+        case FilterType::bandPass:
+        case FilterType::tiltShelf: break;
+    }
+    // Band-pass: the edges where it is 3 dB down.
+    const auto k = 1.0 / (2.0 * solo.q);
+    const auto r = std::sqrt (1.0 + k * k);
+    return { solo.frequency * (r - k), solo.frequency * (r + k) };
 }
 
 void EqGraph::endSolo()
 {
     if (soloBand < 0)
         return;
+    controller.endGesture (soloBand, EqField::frequency);
+    controller.endGesture (soloBand, EqField::q);
     // Back to what was soloed before (the editor's Solo button may have latched this band).
     controller.setSoloBand (soloPrevious);
     soloBand = -1;
@@ -528,6 +577,24 @@ void EqGraph::paint (juce::Graphics& g)
         g.setColour (c.border);
         g.fillRect (juce::Rectangle<float> (0.0f, std::round (yForGain (0.0)), bounds.getWidth(), 1.0f));
 
+        // Solo (held or latched): the range heard, between two dashed lines; the rest dims.
+        const auto soloed = controller.getSoloBand();
+        const auto soloRange = soloRangeHz();
+        const auto soloing = soloed >= 0 && ! soloRange.isEmpty();
+        if (soloing)
+        {
+            const auto colour = theme.eqBandColour (soloed);
+            const auto x0 = xForFrequency (soloRange.getStart());
+            const auto x1 = xForFrequency (soloRange.getEnd());
+            g.setColour (colour.withAlpha (0.07f));
+            g.fillRect (juce::Rectangle<float> (x0, 0.0f, x1 - x0, bounds.getHeight()));
+            g.setColour (colour.withAlpha (0.75f));
+            const float dashes[] = { 4.0f, 4.0f };
+            for (const auto x : { x0, x1 })
+                if (x > 1.0f && x < bounds.getWidth() - 1.0f)
+                    g.drawDashedLine (juce::Line<float> (x, 0.0f, x, bounds.getHeight()), dashes, 2, 1.0f);
+        }
+
         // Spectrum.
         if (controller.getProcessor().getEqAnalyzer() != PMelodiesProcessor::EqAnalyzer::off)
         {
@@ -539,9 +606,9 @@ void EqGraph::paint (juce::Graphics& g)
                 spectrum.lineTo ((float) x, juce::jlimit (bounds.getY(), bounds.getBottom(), toY (analyser.levelAt (frequencyForX ((float) x)))));
             spectrum.lineTo (bounds.getRight(), bounds.getBottom());
             spectrum.closeSubPath();
-            g.setColour (accent.withAlpha (0.10f));
+            g.setColour (accent.withAlpha (soloing ? 0.05f : 0.10f));
             g.fillPath (spectrum);
-            g.setColour (accent.withAlpha (0.35f));
+            g.setColour (accent.withAlpha (soloing ? 0.15f : 0.35f));
             g.strokePath (spectrum, juce::PathStrokeType (1.0f));
         }
 
@@ -559,8 +626,8 @@ void EqGraph::paint (juce::Graphics& g)
             return p;
         };
 
-        // Selected band: its own contribution, filled from the 0 dB line, only where it acts.
-        const auto selected = controller.getSelectedBand();
+        // Selected (or soloed) band: its own contribution, filled from the 0 dB line, only where it acts.
+        const auto selected = soloing ? soloed : controller.getSelectedBand();
         if (selected >= 0 && ! bandDb[(size_t) selected].empty())
         {
             const auto& db = bandDb[(size_t) selected];
@@ -600,7 +667,7 @@ void EqGraph::paint (juce::Graphics& g)
         }
 
         // Overall curve.
-        g.setColour (accent);
+        g.setColour (accent.withAlpha (soloing ? 0.3f : 1.0f));
         g.strokePath (curvePath (totalDb), juce::PathStrokeType (2.2f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
         // Scales.
@@ -627,27 +694,30 @@ void EqGraph::paint (juce::Graphics& g)
                     juce::Rectangle<float> (12.0f, 6.0f, bounds.getWidth() - 80.0f, 16.0f), juce::Justification::centredLeft, true);
     }
 
-    // Points, selected last (on top).
+    // Points, selected last (on top). In solo the other bands fade.
     const auto selected = controller.getSelectedBand();
+    const auto soloed = controller.getSoloBand();
     const auto drawPoint = [&] (int b)
     {
         const auto band = controller.getBand (b);
         const auto p = pointForBand (b);
         const auto number = juce::String (b + 1);
         const auto colour = theme.eqBandColour (b);
+        const auto fade = soloed >= 0 && b != soloed ? 0.3f : 1.0f;
+        const auto set = [&g, fade] (juce::Colour col) { g.setColour (col.withMultipliedAlpha (fade)); };
         g.setFont (theme.ui (10.0f, Weight::semiBold));
         if (b == selected)
         {
-            g.setColour (colour.withAlpha (0.18f));
+            set (colour.withAlpha (0.18f));
             g.fillEllipse (juce::Rectangle<float> (30.0f, 30.0f).withCentre (p));
-            g.setColour (band.bypassed ? c.textDim : colour);
+            set (band.bypassed ? c.textDim : colour);
             g.fillEllipse (juce::Rectangle<float> (20.0f, 20.0f).withCentre (p));
-            g.setColour (c.onAccent);
+            set (c.onAccent);
         }
         else
         {
             const auto circle = juce::Rectangle<float> (2.0f * pointRadius, 2.0f * pointRadius).withCentre (p);
-            g.setColour (c.window);
+            set (c.window);
             g.fillEllipse (circle);
             if (band.bypassed)
             {
@@ -655,15 +725,15 @@ void EqGraph::paint (juce::Graphics& g)
                 ring.addEllipse (circle);
                 const float dashes[] = { 2.0f, 2.0f };
                 juce::PathStrokeType (1.6f).createDashedStroke (dashed, ring, dashes, 2);
-                g.setColour (c.textDim);
+                set (c.textDim);
                 g.fillPath (dashed);
-                g.setColour (c.textMuted);
+                set (c.textMuted);
             }
             else
             {
-                g.setColour (b == hovered ? colour.brighter (0.3f) : colour);
+                set (b == hovered ? colour.brighter (0.3f) : colour);
                 g.drawEllipse (circle, 1.6f);
-                g.setColour (c.text);
+                set (c.text);
             }
         }
         g.drawText (number, juce::Rectangle<float> (20.0f, 14.0f).withCentre (p), juce::Justification::centred, false);

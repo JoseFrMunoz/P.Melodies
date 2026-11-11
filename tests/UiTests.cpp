@@ -506,6 +506,14 @@ TEST_CASE ("Snapshot of the interface for visual review", "[.snapshot]")
         pm.getFooter().refresh (1.0 / 30.0);
         pm.getChainPanel().refreshStatus();
         savePng (pm.createComponentSnapshot (pm.getLocalBounds(), true, 2.0f), "01b-eq");
+
+        // Solo held from the mini panel and dragged to 1.1 kHz: the range heard, the rest dimmed.
+        auto& graph = eqPanel.getGraph();
+        graph.beginSolo (bell);
+        graph.soloDragTo ({ graph.xForFrequency (1100.0) - graph.xForFrequency (400.0), 0.0f }, false);
+        eqPanel.refresh();
+        savePng (pm.createComponentSnapshot (pm.getLocalBounds(), true, 2.0f), "01c-eq-solo");
+        graph.endSolo();
     }
 
     // Component gallery: standard knobs with module colours, selector, dropdown, switch.

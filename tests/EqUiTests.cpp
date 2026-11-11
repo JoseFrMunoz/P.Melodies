@@ -569,6 +569,82 @@ TEST_CASE ("EQ mini panel: bypass, shape row, solo while held, delete and Esc", 
     CHECK_FALSE (popup.isVisible());
 }
 
+TEST_CASE ("EQ solo: dragging the held headphones moves the band, Ctrl sets the Q, the heard range is drawn", "[ui][eq][popup][phase1]")
+{
+    EqUi ui;
+    auto& g = ui.graph();
+    auto& c = ui.controller();
+    const auto left = juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier);
+    const auto band = c.createBand (FilterType::bell, 1000.0, 4.0);
+    const auto settings = [&] { return c.getBand (band).settings; };
+
+    // Automation records one gesture per held solo.
+    struct GestureCounter final : juce::AudioProcessorParameter::Listener
+    {
+        void parameterValueChanged (int, float) override {}
+        void parameterGestureChanged (int, bool starting) override { ++(starting ? begins : ends); }
+        int begins = 0, ends = 0;
+    } gestures;
+    auto& frequency = c.parameter (band, EqField::frequency);
+    frequency.addListener (&gestures);
+
+    CHECK (g.soloRangeHz().isEmpty());
+    g.beginSolo (band);
+    CHECK (c.getSoloBand() == band);
+    // What is heard: the band-pass edges 3 dB down around 1 kHz with Q 1.
+    CHECK (g.soloRangeHz().getStart() == Catch::Approx (618.0).epsilon (0.002));
+    CHECK (g.soloRangeHz().getEnd() == Catch::Approx (1618.0).epsilon (0.002));
+
+    // Sideways: the frequency (one octave of screen = one octave).
+    const auto octave = g.xForFrequency (2000.0) - g.xForFrequency (1000.0);
+    g.soloDragTo ({ octave, 0.0f }, false);
+    CHECK (settings().frequency == Catch::Approx (2000.0).epsilon (0.003));
+    CHECK (g.soloRangeHz().getStart() == Catch::Approx (1236.0).epsilon (0.004));
+
+    // The vertical movement alone changes nothing.
+    g.soloDragTo ({ octave, -60.0f }, false);
+    CHECK (settings().q == Catch::Approx (1.0));
+    CHECK (settings().gainDb == Catch::Approx (4.0));
+
+    // With Ctrl, 40 px up doubles the Q (narrower).
+    g.soloDragTo ({ octave, -100.0f }, true);
+    CHECK (settings().q == Catch::Approx (2.0).epsilon (0.01));
+
+    // Back to where it started.
+    g.soloDragTo ({ 0.0f, -100.0f }, false);
+    CHECK (settings().frequency == Catch::Approx (1000.0).epsilon (0.003));
+    CHECK (std::abs ((float) g.getPopup().getCardBoundsInParent().getCentreX() - g.pointForBand (band).x) <= 1.0f);
+
+    g.endSolo();
+    CHECK (c.getSoloBand() == -1);
+    CHECK (g.soloRangeHz().isEmpty());
+    CHECK (gestures.begins == 1);
+    CHECK (gestures.ends == 1);
+    frequency.removeListener (&gestures);
+
+    // Shelves and cuts: everything below or above the frequency. The latched solo is drawn too.
+    const auto cut = c.createBand (FilterType::lowCut, 100.0, 0.0);
+    c.setSoloBand (cut);
+    CHECK (g.soloRangeHz().getStart() == Catch::Approx (ui::EqGraph::minDisplayHz));
+    CHECK (g.soloRangeHz().getEnd() == Catch::Approx (100.0).epsilon (0.003));
+    const auto shelf = c.createBand (FilterType::highShelf, 8000.0, 3.0);
+    c.setSoloBand (shelf);
+    CHECK (g.soloRangeHz().getStart() == Catch::Approx (8000.0).epsilon (0.003));
+    CHECK (g.soloRangeHz().getEnd() == Catch::Approx (ui::EqGraph::maxDisplayHz));
+    c.setSoloBand (-1);
+
+    // Through the panel's headphones: press, drag sideways, release.
+    c.setSelectedBand (band);
+    auto& headphones = g.getPopup().getSoloButton();
+    const auto start = juce::Point<float> (12.0f, 12.0f);
+    headphones.mouseDown (mouseEvent (headphones, start, left));
+    CHECK (c.getSoloBand() == band);
+    headphones.mouseDrag (mouseEvent (headphones, start + juce::Point<float> (octave, 0.0f), left));
+    CHECK (settings().frequency == Catch::Approx (2000.0).epsilon (0.003));
+    headphones.mouseUp (mouseEvent (headphones, start + juce::Point<float> (octave, 0.0f), juce::ModifierKeys()));
+    CHECK (c.getSoloBand() == -1);
+}
+
 TEST_CASE ("EQ band editor follows the selected band", "[ui][eq][phase1]")
 {
     EqUi ui;

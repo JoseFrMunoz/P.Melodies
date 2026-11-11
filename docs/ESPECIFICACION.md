@@ -93,7 +93,7 @@ Los manuales de todas las referencias están en [`docs/referencias/README.md`](r
   - La rueda cambia la Q; en los cortes, la pendiente (un paso por muesca), y Ctrl+rueda, la Q. Shift: pasos finos de Q.
   - Alt+clic hace bypass de la banda.
   - Al seleccionar una banda se muestra su panel: tipo, frecuencia, ganancia, Q, pendiente, *Solo* (escucha solo esa banda) y *Bypass*, con la papelera para eliminarla.
-  - **Mini panel** junto al punto seleccionado (revisión de P.P., §12): bypass, tipo (despliega las 8 formas), solo mientras se mantiene pulsado, eliminar, y frecuencia con su nota, ganancia (o pendiente) y Q. Sustituye a la etiqueta flotante. Va encima del punto, o debajo si no cabe, y lo sigue. Se cierra con un clic en el fondo o con Esc.
+  - **Mini panel** junto al punto seleccionado (revisión de P.P., §12): bypass, tipo (despliega las 8 formas), solo mientras se mantiene pulsado (arrastrándolo a los lados se mueve la frecuencia y, con Ctrl, en vertical la Q; dos líneas marcan el rango que se oye y el resto se atenúa), eliminar, y frecuencia con su nota, ganancia (o pendiente) y Q. Sustituye a la etiqueta flotante. Va encima del punto, o debajo si no cabe, y lo sigue. Se cierra con un clic en el fondo o con Esc.
   - Se dibuja la contribución de la banda seleccionada (relleno) y la curva total.
 
 ---

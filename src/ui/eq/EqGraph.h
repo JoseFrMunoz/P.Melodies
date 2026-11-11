@@ -96,11 +96,22 @@ public:
     /** A band changed from the mini panel or the editor: redraw the curves and the panel. */
     void bandsChanged();
 
-    // Solo from the mini panel's headphones: heard while held (dragging is phase 1 review, step 4).
+    /**
+        Solo from the mini panel's headphones: heard while held. Dragging them moves the band
+        (offset in pixels from where the press started): horizontally the frequency; with
+        changeQ (Ctrl) the vertical movement sets the Q, up = narrower. One gesture each.
+    */
     void beginSolo (int index);
     void soloDragTo (juce::Point<float> offset, bool changeQ);
     void endSolo();
     bool isSoloHeld() const noexcept { return soloBand >= 0; }
+
+    /**
+        Frequencies heard in solo (held or latched), as drawn on the display between two dashed
+        lines; empty without solo. Matches eq::soloSettings(): the band-pass edges at −3 dB, or
+        everything below/above the frequency for shelves and cuts.
+    */
+    juce::Range<double> soloRangeHz() const;
 
     // Component
     void paint (juce::Graphics&) override;
@@ -135,6 +146,9 @@ private:
     std::unique_ptr<EqBandPopup> popup;
     int soloBand = -1;      // held from the mini panel
     int soloPrevious = -1;  // solo before it was held (the editor's Solo button latches)
+    float soloStartX = 0.0f;
+    double soloQ = 1.0;
+    juce::Point<float> soloLastOffset;
     float slopeWheel = 0.0f; // wheel movement not yet turned into a slope step
     int slopeWheelBand = -1;
     int dragging = -1;
