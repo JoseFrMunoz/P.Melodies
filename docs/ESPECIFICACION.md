@@ -48,9 +48,9 @@ Los manuales de todas las referencias están en [`docs/referencias/README.md`](r
 ## 3. Arquitectura
 
 ### 3.1 Núcleo
-- `AudioProcessorValueTreeState` para todos los parámetros. Todos son **automatizables** desde FL Studio, con nombres legibles y unidades.
+- `AudioProcessorValueTreeState` para todos los parámetros. Todos son **automatizables** desde FL Studio, con nombres legibles y unidades. El orden de la cadena no es un parámetro (§12, 2026-11-11).
 - Interfaz común `Module` con `prepare(spec)`, `reset()`, `process(block, sidechain)`, `getLatencySamples()` y `setBypassed(bool)`. Los cuatro módulos la implementan.
-- **Cadena reordenable:** el orden se guarda en el estado del plugin (por ejemplo, un parámetro que codifica la permutación: 24 combinaciones con los 4 módulos actuales), así se guarda con el proyecto y los presets. El diseño debe poder ampliarse a más módulos en el futuro sin romper presets ni proyectos guardados. Orden por defecto: EQ → Compresor → Saturación → Distorsión.
+- **Cadena reordenable:** el orden se guarda en el estado del plugin como una lista de módulos (`eq,compressor,saturation,distortion`), así se guarda con el proyecto y los presets. No es automatizable (decisión del 2026-11-11, §12). El diseño debe poder ampliarse a más módulos en el futuro sin romper presets ni proyectos guardados: un estado sin un módulo nuevo lo añade al final. Orden por defecto: EQ → Compresor → Saturación → Distorsión.
 - **Cambio de orden sin clics:** al reordenar, haz un fundido cruzado de 20 ms entre la cadena antigua y la nueva, procesando ambas durante el fundido.
 - **Latencia:** reporta a FL Studio una latencia **constante**, la máxima posible según los ajustes que la generan (lookahead y oversampling), y compensa internamente con retardos para que no cambie al mover parámetros ni al reordenar. La ruta *dry* del mix global debe ir alineada.
 - **Oversampling:** usa `juce::dsp::Oversampling`. Cada módulo que lo necesite tiene su selector. Ajuste global de calidad: un factor *al reproducir* y otro *al exportar* (detectado con `isNonRealtime()`), que se aplica como mínimo.
@@ -193,7 +193,7 @@ Los manuales de todas las referencias están en [`docs/referencias/README.md`](r
 - **Panel izquierdo "Cadena de señal":**
   - Lista vertical de los 4 módulos en el orden real, entre las marcas IN y OUT.
   - Cada fila lleva asa de arrastre, color del módulo, nombre, un resumen de estado y el botón de encendido (bypass).
-  - **Reordenado en vivo** (§12, 2026-11-11): al arrastrar desde el asa, los demás módulos se apartan deslizándose en cuanto el arrastrado pasa la mitad de su hueco, y un hueco punteado marca dónde quedará. Al soltar, en cualquier punto, el módulo se desliza a ese hueco; no hace falta apuntar. El orden llega al plugin al soltar, como un solo gesto (y un solo paso de deshacer en la fase 5). Los cambios de orden desde fuera (automatización, presets, deshacer) también se animan.
+  - **Reordenado en vivo** (§12, 2026-11-11): al arrastrar desde el asa, los demás módulos se apartan deslizándose en cuanto el arrastrado pasa la mitad de su hueco, y un hueco punteado marca dónde quedará. Al soltar, en cualquier punto, el módulo se desliza a ese hueco; no hace falta apuntar. El orden llega al plugin al soltar, como un solo gesto (y un solo paso de deshacer en la fase 5). Los cambios de orden desde fuera (cargar un proyecto con la ventana abierta y, en la fase 5, presets y deshacer) también se animan.
   - El clic abre el módulo en el panel derecho.
   - Estados: normal, seleccionado, apagado y arrastrando (pantalla 06).
 - **Panel derecho:** solo el módulo seleccionado, a tamaño completo.
@@ -252,7 +252,7 @@ Lo que no está en la fase correspondiente no se hace: las peticiones de §13 es
 - **Mix global «no funciona»:** funciona, pero en la fase 0 ningún módulo procesa, así que la señal procesada y la original son la misma y cualquier mezcla suena igual. Un test nuevo sigue todo el camino (arrastrar el knob con el ratón → parámetro → mezcla en el audio). Se oirá en cuanto el EQ cambie el sonido.
 - **Reordenado en vivo y fluido** en el panel de la cadena (§8.1).
 
-**Pendiente antes de fusionar a `main`:** el texto de §3.1 y §10 que llegó desde `main` (2026-11-06) pide que la cadena admita más de 4 módulos sin romper presets ni proyectos. En el código, el número de módulos está en una sola constante (`numModules`), pero el orden se guarda en un parámetro de 24 valores, que solo vale para 4 módulos. Falta que P.P. elija cómo se guarda el orden.
+- **Orden de la cadena para más de 4 módulos** (2026-11-11, opción A de P.P.): el texto de §3.1 y §10 que llegó desde `main` pide que la cadena admita más módulos sin romper presets ni proyectos. El orden deja de ser un parámetro de 24 valores y pasa a ser una lista de módulos en el estado (§12). Los proyectos guardados con el parámetro antiguo se leen con su orden.
 
 Todo lo que comparten los módulos. Si falla aquí, fallaría en los cuatro.
 - Repo, CMake, JUCE fijado, `LICENSE` AGPLv3, `CLAUDE.md`, `docs/ESPECIFICACION.md`, README inicial y `.gitignore`.
@@ -411,6 +411,7 @@ Decisiones tomadas con P.P. Tienen el mismo valor que el resto de la especificac
 | Paleta de marca (2026-11-07) | «Obsidiana y oro» en el tema Oscuro por defecto: base casi negra con matiz frío, textos cálidos, oro viejo `#D4AF37` como firma y módulos en oro, acero, cobre y granate (§8.5). Es la firma visual de P.P.: verla y saber que es suyo. El granate se aclaró de `#A3344A` a `#AD374E` para llegar al contraste mínimo de 3:1 que piden los elementos gráficos; un test comprueba el contraste de todo el tema. |
 | Referencia de la distorsión (2026-11-07) | Distructor de FL Studio como principal; Fruity Fast Dist, Fruity WaveShaper y Saturn 2 como apoyo. Se puede cambiar si no convence. |
 | Visto bueno de la fase 0 (2026-11-11) | P.P. la probó en FL Studio: «todo bien» salvo el Mix global y el arrastre del panel de la cadena, y pidió seguir con las fases. Los dos cambios se hacen en `phase/0-foundation` y él los comprueba durante la fase 1. La fase 1 sale de esa rama. |
+| Orden de la cadena (2026-11-11) | Opción A de P.P.: el orden es una **lista de módulos** guardada en el estado (`chainOrder="eq,compressor,saturation,distortion"`), no un parámetro automatizable. Admite cualquier número de módulos: un módulo desconocido se ignora y uno que falte se añade al final. Llega al audio sin bloqueos (una palabra atómica) y la cadena hace el fundido de siempre. Va en el proyecto y, desde la fase 5, en los presets y en deshacer. Formato del estado: versión 2; los proyectos con el parámetro antiguo (`chainOrder`, 0–23) se convierten al cargarlos. |
 | Reordenado en vivo (2026-11-11) | A petición de P.P.: al arrastrar un módulo, los demás se apartan solos y con animación, y al soltar el módulo se desliza a su hueco sin tener que apuntar a una línea. Sustituye a la línea de destino de la pantalla 06. El orden se aplica al soltar, como un solo gesto. |
 
 ---

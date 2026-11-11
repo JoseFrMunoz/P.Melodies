@@ -19,6 +19,7 @@ void randomise (PMelodiesProcessor& processor, int seed)
     juce::Random random (seed);
     for (auto* parameter : processor.getParameters())
         parameter->setValueNotifyingHost (random.nextFloat());
+    processor.setChainOrder (chain::fromLegacyIndex (random.nextInt (24))); // any of the 24 orders
 }
 
 void checkSameParameters (PMelodiesProcessor& a, PMelodiesProcessor& b)
@@ -58,6 +59,7 @@ TEST_CASE ("Saved state restores every parameter, the chain order and the select
 
         INFO ("seed " << seed);
         checkSameParameters (original, restored);
+        CHECK (restored.getChainOrder() == original.getChainOrder());
         CHECK (restored.getSelectedModule() == moduleAt (seed % numModules));
 
         // Saving the restored instance gives the same document again.
@@ -71,7 +73,8 @@ TEST_CASE ("Restored state is what the audio engine uses", "[state][phase0]")
 {
     PMelodiesProcessor original;
     setParameter (original, param::id::outputGain, -6.0f);
-    setParameter (original, param::id::chainOrder, 13.0f);
+    const chain::Order order { ModuleId::saturation, ModuleId::eq, ModuleId::distortion, ModuleId::compressor };
+    original.setChainOrder (order);
     setParameter (original, param::id::eqEnabled, 0.0f);
 
     juce::MemoryBlock saved;
@@ -81,7 +84,7 @@ TEST_CASE ("Restored state is what the audio engine uses", "[state][phase0]")
     restored.setStateInformation (saved.getData(), (int) saved.getSize());
     prepareProcessor (restored, 48000.0, 512, 2);
 
-    CHECK (restored.getEngine().getChain().getActiveOrder() == 13);
+    CHECK (restored.getEngine().getChain().getActiveOrder() == order);
     CHECK (restored.getEngine().getChain().getModule (ModuleId::eq).isBypassed());
 
     const auto latency = restored.getLatencySamples();
@@ -119,6 +122,68 @@ TEST_CASE ("State saved by an older version gets defaults for parameters it did 
     CHECK (input->convertFrom0to1 (input->getValue()) == Catch::Approx (5.0f).margin (1.0e-4));
     CHECK ((int) restored.getState().state.getProperty (PMelodiesProcessor::stateVersionProperty)
            == PMelodiesProcessor::stateVersion);
+}
+
+TEST_CASE ("A project saved with the old order parameter keeps its order", "[state][phase0]")
+{
+    // A state written by the phase 0 and 1 builds: version 1 and the order as a PARAM (0..23).
+    PMelodiesProcessor original;
+    setParameter (original, param::id::outputGain, -4.0f);
+    juce::MemoryBlock saved;
+    original.getStateInformation (saved);
+
+    auto xml = juce::AudioProcessor::getXmlFromBinary (saved.getData(), (int) saved.getSize());
+    REQUIRE (xml != nullptr);
+    auto tree = juce::ValueTree::fromXml (*xml);
+    tree.removeProperty (PMelodiesProcessor::chainOrderProperty, nullptr);
+    tree.setProperty (PMelodiesProcessor::stateVersionProperty, 1, nullptr);
+    juce::ValueTree legacy ("PARAM");
+    legacy.setProperty ("id", "chainOrder", nullptr);
+    legacy.setProperty ("value", 13.0, nullptr);
+    tree.appendChild (legacy, nullptr);
+    juce::MemoryBlock oldDocument;
+    juce::AudioProcessor::copyXmlToBinary (*tree.createXml(), oldDocument);
+
+    PMelodiesProcessor restored;
+    restored.setStateInformation (oldDocument.getData(), (int) oldDocument.getSize());
+
+    CHECK (restored.getChainOrder() == chain::fromLegacyIndex (13));
+    CHECK (chain::describe (restored.getChainOrder()) == "Sat > EQ > Dist > Comp");
+    CHECK_FALSE (restored.getState().state.getChildWithProperty ("id", "chainOrder").isValid());
+    CHECK ((int) restored.getState().state.getProperty (PMelodiesProcessor::stateVersionProperty) == PMelodiesProcessor::stateVersion);
+    auto* out = restored.getState().getParameter (param::id::outputGain);
+    CHECK (out->convertFrom0to1 (out->getValue()) == Catch::Approx (-4.0f).margin (1.0e-4));
+
+    // The audio follows the restored order.
+    prepareProcessor (restored, 44100.0, 256, 2);
+    CHECK (restored.getEngine().getChain().getActiveOrder() == chain::fromLegacyIndex (13));
+}
+
+TEST_CASE ("The chain order is saved as a readable list and repaired when damaged", "[state][phase0]")
+{
+    PMelodiesProcessor original;
+    original.setChainOrder ({ ModuleId::distortion, ModuleId::eq, ModuleId::compressor, ModuleId::saturation });
+    CHECK (original.getState().state.getProperty (PMelodiesProcessor::chainOrderProperty).toString()
+           == "distortion,eq,compressor,saturation");
+
+    juce::MemoryBlock saved;
+    original.getStateInformation (saved);
+    auto xml = juce::AudioProcessor::getXmlFromBinary (saved.getData(), (int) saved.getSize());
+    REQUIRE (xml != nullptr);
+    auto tree = juce::ValueTree::fromXml (*xml);
+    tree.setProperty (PMelodiesProcessor::chainOrderProperty, "compressor,whatever,compressor", nullptr);
+    juce::MemoryBlock damaged;
+    juce::AudioProcessor::copyXmlToBinary (*tree.createXml(), damaged);
+
+    PMelodiesProcessor restored;
+    restored.setStateInformation (damaged.getData(), (int) damaged.getSize());
+    CHECK (restored.getChainOrder() == chain::Order { ModuleId::compressor, ModuleId::eq, ModuleId::saturation, ModuleId::distortion });
+    CHECK (restored.getState().state.getProperty (PMelodiesProcessor::chainOrderProperty).toString()
+           == "compressor,eq,saturation,distortion");
+
+    // An invalid order from the interface is ignored.
+    restored.setChainOrder ({ ModuleId::eq, ModuleId::eq, ModuleId::eq, ModuleId::eq });
+    CHECK (restored.getChainOrder() == chain::Order { ModuleId::compressor, ModuleId::eq, ModuleId::saturation, ModuleId::distortion });
 }
 
 TEST_CASE ("Invalid state data is ignored", "[state][phase0]")

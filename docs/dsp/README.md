@@ -53,9 +53,12 @@ Referencias:
 Referencia:
 - ITU-R BS.1770-4, *Algorithms to measure audio programme loudness and true-peak audio level*, 2015.
 
-### Orden de la cadena como un único parámetro (`src/core/ChainOrder.*`)
+### Orden de la cadena (`src/core/ChainOrder.*`)
 
-Las 24 permutaciones de 4 módulos se numeran con el código de Lehmer (sistema de numeración factorial). El índice 0 es el orden por defecto (EQ → Compresor → Saturación → Distorsión). Los índices son estables, porque se guardan en proyectos y presets.
+El orden es una lista de módulos, no un parámetro (§12, 2026-11-11):
+- **En el estado:** texto con claves estables separadas por comas (`eq,compressor,saturation,distortion`). Al leerlo se ignoran claves desconocidas y repetidas, y los módulos que falten se añaden al final en su orden por defecto. Así un proyecto guardado antes de que existiera un módulo sigue cargando.
+- **Hacia el audio:** la lista se empaqueta en una palabra de 64 bits (4 bits por posición, hasta 16 módulos) dentro de un `std::atomic`. El hilo de audio la lee cada bloque sin bloqueos; si no fuera una permutación válida, usaría el orden por defecto.
+- **Proyectos antiguos:** las builds de las fases 0 y 1 guardaban un índice de 0 a 23 que numeraba las 24 permutaciones con el código de Lehmer (sistema de numeración factorial). `fromLegacyIndex()` lo convierte al cargar (formato de estado 2).
 
 Referencia:
 - D. E. Knuth, *The Art of Computer Programming*, vol. 2, §3.3.2 (sistema factorial), Addison-Wesley.

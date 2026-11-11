@@ -76,11 +76,9 @@ void ModuleChain::setMinimumOversamplingIndex (int index) noexcept
             module->setMinimumOversamplingIndex (index);
 }
 
-void ModuleChain::runSet (int setIndex, int orderIndex, juce::dsp::AudioBlock<float> block,
+void ModuleChain::runSet (int setIndex, const chain::Order& order, juce::dsp::AudioBlock<float> block,
                           const SidechainBlock* sidechain) noexcept
 {
-    const auto order = chain::decode (orderIndex);
-
     for (auto id : order)
         sets[(size_t) setIndex][(size_t) toIndex (id)]->process (block, sidechain);
 }

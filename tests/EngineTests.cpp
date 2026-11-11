@@ -207,7 +207,7 @@ TEST_CASE ("The latency does not change with quality, order, bypass, settings or
                                       {
                                           if (block % 10 != 0)
                                               return;
-                                          setParameter (processor, param::id::chainOrder, (float) random.nextInt (24));
+                                          processor.setChainOrder (chain::fromLegacyIndex (random.nextInt (24))); // any of the 24 orders
                                           setParameter (processor, param::id::qualityRealtime, (float) random.nextInt (3));
                                           setParameter (processor, param::id::qualityOffline, (float) random.nextInt (4));
                                           setParameter (processor, param::id::eqEnabled, (float) random.nextInt (2));
@@ -241,8 +241,8 @@ TEST_CASE ("Reordering crossfades without discontinuities", "[engine][reorder][p
     const int switchAt = 188 * 256; // a block boundary: the order is read once per block
     const auto p = plainParameters();
 
-    const auto newOrder = chain::encode ({ ModuleId::compressor, ModuleId::eq, ModuleId::saturation, ModuleId::distortion });
-    REQUIRE (newOrder != chain::defaultOrderIndex);
+    const chain::Order newOrder { ModuleId::compressor, ModuleId::eq, ModuleId::saturation, ModuleId::distortion };
+    REQUIRE (newOrder != chain::defaultOrder());
 
     const auto input = makeSine (2, numSamples, 220.0, sampleRate, 0.3f);
     const auto sizes = blockSizes (numSamples, 256);
@@ -258,7 +258,7 @@ TEST_CASE ("Reordering crossfades without discontinuities", "[engine][reorder][p
     auto engine = makeEngine (testFactory (s), sampleRate, 256, 2, p);
     const auto preRoll = engine->getChain().getPreRollSamples();
     const auto out = runEngine (*engine, input, sizes, p, false,
-                                [&] (int, int start, EngineParameters& q) { q.chainOrder = start >= switchAt ? newOrder : 0; });
+                                [&] (int, int start, EngineParameters& q) { q.chainOrder = start >= switchAt ? newOrder : chain::defaultOrder(); });
 
     const auto crossfadeSamples = (int) (ModuleChain::crossfadeSeconds * sampleRate);
     const auto transitionEnd = switchAt + preRoll + crossfadeSamples + 1;
@@ -302,12 +302,12 @@ TEST_CASE ("Fast successive reorders stay continuous and settle on the last orde
 
     auto engine = makeEngine (testFactory (s), sampleRate, 512, 1, p);
     juce::Random random (5);
-    int lastOrder = 0;
+    auto lastOrder = chain::defaultOrder();
     const auto out = runEngine (*engine, input, sizes, p, false,
                                 [&] (int block, int start, EngineParameters& q)
                                 {
                                     if (start < 60000 && block % 3 == 0)
-                                        lastOrder = random.nextInt (24);
+                                        lastOrder = chain::fromLegacyIndex (random.nextInt (24)); // any of the 24 orders
                                     q.chainOrder = lastOrder;
                                 });
 
@@ -323,7 +323,7 @@ TEST_CASE ("Fast successive reorders stay continuous and settle on the last orde
     CHECK (maxDifference (out, refOut, 80000, numSamples) < 1.0e-5f);
 }
 
-TEST_CASE ("Changing the order parameter of the plugin keeps the passthrough exact", "[engine][reorder][phase0]")
+TEST_CASE ("Changing the chain order of the plugin keeps the passthrough exact", "[engine][reorder][phase0]")
 {
     PMelodiesProcessor processor;
     prepareProcessor (processor, 44100.0, 128, 2);
@@ -334,7 +334,7 @@ TEST_CASE ("Changing the order parameter of the plugin keeps the passthrough exa
                                       [&] (int block, int)
                                       {
                                           if (block % 20 == 0)
-                                              setParameter (processor, param::id::chainOrder, (float) ((block / 20) % 24));
+                                              processor.setChainOrder (chain::fromLegacyIndex ((block / 20) % 24));
                                       });
 
     CHECK (countPassthroughMismatches (input, output, latency) == 0);

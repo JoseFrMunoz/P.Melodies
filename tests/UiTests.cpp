@@ -155,7 +155,7 @@ int settle (ui::ChainPanel& panel, int maxFrames = 240)
 int centreY (const juce::Component& c) { return c.getBounds().getCentreY(); }
 } // namespace
 
-TEST_CASE ("Chain panel: rows are laid out in the processing order and follow automation smoothly", "[ui][chain][phase0]")
+TEST_CASE ("Chain panel: rows are laid out in the processing order and follow outside changes smoothly", "[ui][chain][phase0]")
 {
     PMelodiesProcessor processor;
     auto editor = std::unique_ptr<juce::AudioProcessorEditor> (processor.createEditorAndMakeActive());
@@ -176,10 +176,10 @@ TEST_CASE ("Chain panel: rows are laid out in the processing order and follow au
     CHECK (panel.positionForRowTop (top0 - 40.0f) == 0);
     CHECK (panel.positionForRowTop (top0 + 9.0f * pitch) == 3);
 
-    // Moving a module (what a drop does) updates the parameter and the order.
+    // Moving a module (what a drop does) updates the plugin's order and the panel's.
     panel.moveModule (3, 0); // distortion to the front
     const auto expected = chain::Order { ModuleId::distortion, ModuleId::eq, ModuleId::compressor, ModuleId::saturation };
-    CHECK (juce::roundToInt (valueOf (processor, param::id::chainOrder)) == chain::encode (expected));
+    CHECK (processor.getChainOrder() == expected);
     CHECK (panel.getOrder() == expected);
 
     // The rows glide to their new slots instead of jumping, and settle in well under half a second.
@@ -193,8 +193,10 @@ TEST_CASE ("Chain panel: rows are laid out in the processing order and follow au
     for (int p = 0; p < numModules; ++p)
         CHECK (panel.getRow (expected[(size_t) p]).getBounds() == panel.getSlotBounds (p));
 
-    // Automation from the host moves the rows the same way.
-    setParameter (processor, param::id::chainOrder, 0.0f);
+    // A change from outside (a project loaded with the window open; presets and undo in phase 5)
+    // moves the rows the same way on the next refresh.
+    processor.setChainOrder (chain::defaultOrder());
+    dynamic_cast<PMelodiesEditor&> (*editor).refresh();
     CHECK (panel.getRowTargetBounds (ModuleId::eq) == panel.getSlotBounds (0));
     CHECK (panel.isAnimating());
     settle (panel);
@@ -209,7 +211,7 @@ TEST_CASE ("Chain panel: while dragging, the other rows make room live and the d
     PMelodiesProcessor processor;
     auto editor = std::unique_ptr<juce::AudioProcessorEditor> (processor.createEditorAndMakeActive());
     auto& panel = dynamic_cast<PMelodiesEditor&> (*editor).getChainPanel();
-    const auto defaultOrder = chain::decode (chain::defaultOrderIndex);
+    const auto defaultOrder = chain::defaultOrder();
     const auto pitch = panel.getSlotBounds (1).getY() - panel.getSlotBounds (0).getY();
 
     auto& distortion = panel.getRow (ModuleId::distortion);
@@ -253,13 +255,13 @@ TEST_CASE ("Chain panel: while dragging, the other rows make room live and the d
     CHECK (compressor.getBounds() == panel.getSlotBounds (2));
 
     // Nothing reaches the plugin until the drop (one gesture, one undo step in phase 5).
-    CHECK (juce::roundToInt (valueOf (processor, param::id::chainOrder)) == chain::defaultOrderIndex);
+    CHECK (processor.getChainOrder() == chain::defaultOrder());
 
     // Drop anywhere: no need to aim at a line. The row glides into the gap it was showing.
     panel.endDrag();
     CHECK_FALSE (panel.isDragging());
     const auto dropped = chain::Order { ModuleId::eq, ModuleId::distortion, ModuleId::compressor, ModuleId::saturation };
-    CHECK (juce::roundToInt (valueOf (processor, param::id::chainOrder)) == chain::encode (dropped));
+    CHECK (processor.getChainOrder() == dropped);
     CHECK (panel.getRowTargetBounds (ModuleId::distortion) == panel.getSlotBounds (1));
     CHECK (panel.isAnimating());
     CHECK (settle (panel) < 25);
@@ -276,7 +278,7 @@ TEST_CASE ("Chain panel: while dragging, the other rows make room live and the d
     CHECK (panel.getDisplayedOrder() == dropped);
     panel.endDrag();
     settle (panel);
-    CHECK (juce::roundToInt (valueOf (processor, param::id::chainOrder)) == chain::encode (dropped));
+    CHECK (processor.getChainOrder() == dropped);
     CHECK (distortion.getBounds() == panel.getSlotBounds (1));
 
     // Dragging far beyond the ends is clamped to the first and last slots.

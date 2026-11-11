@@ -25,7 +25,6 @@ inline constexpr const char* clipperEnabled = "clipperEnabled";
 inline constexpr const char* clipperCeiling = "clipperCeiling";
 inline constexpr const char* qualityRealtime = "qualityRealtime";
 inline constexpr const char* qualityOffline = "qualityOffline";
-inline constexpr const char* chainOrder = "chainOrder";
 inline constexpr const char* eqEnabled = "eqEnabled";
 inline constexpr const char* compressorEnabled = "compressorEnabled";
 inline constexpr const char* saturationEnabled = "saturationEnabled";
@@ -69,7 +68,6 @@ private:
     std::atomic<float>* clipperCeiling = nullptr;
     std::atomic<float>* qualityRealtime = nullptr;
     std::atomic<float>* qualityOffline = nullptr;
-    std::atomic<float>* chainOrder = nullptr;
     std::array<std::atomic<float>*, numModules> moduleEnabled {};
     std::atomic<float>* bypass = nullptr;
 };

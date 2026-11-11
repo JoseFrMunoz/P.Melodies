@@ -83,14 +83,9 @@ Apvts::ParameterLayout createLayout()
                       std::make_unique<juce::AudioParameterChoice> (pid (id::qualityOffline), "Calidad al exportar",
                                                                     offlineQualityChoices(), defaultOfflineQualityChoice));
 
-    juce::StringArray orders;
-    for (int i = 0; i < chain::numOrders; ++i)
-        orders.add (chain::describe (i));
-
+    // The chain order is not a parameter: it is saved in the state (§12, 2026-11-11).
     auto modules = std::make_unique<juce::AudioProcessorParameterGroup> ("chain", "Cadena", " | ");
-    modules->addChild (std::make_unique<juce::AudioParameterChoice> (pid (id::chainOrder), "Orden de la cadena", orders,
-                                                                     chain::defaultOrderIndex),
-                       makeBool (id::eqEnabled, "EQ encendido", true, "Encendido", "Apagado"),
+    modules->addChild (makeBool (id::eqEnabled, "EQ encendido", true, "Encendido", "Apagado"),
                        makeBool (id::compressorEnabled, "Compresor encendido", true, "Encendido", "Apagado"),
                        makeBool (id::saturationEnabled, text ("Saturaci\xc3\xb3n encendida"), true, "Encendida", "Apagada"),
                        makeBool (id::distortionEnabled, text ("Distorsi\xc3\xb3n encendida"), true, "Encendida", "Apagada"));
@@ -118,7 +113,6 @@ ParameterReader::ParameterReader (Apvts& state)
     clipperCeiling = get (id::clipperCeiling);
     qualityRealtime = get (id::qualityRealtime);
     qualityOffline = get (id::qualityOffline);
-    chainOrder = get (id::chainOrder);
     for (int i = 0; i < numModules; ++i)
         moduleEnabled[(size_t) i] = get (moduleEnabledId (moduleAt (i)));
     bypass = get (id::bypass);
@@ -139,7 +133,6 @@ EngineParameters ParameterReader::read() const noexcept
     p.clipperCeilingDb = clipperCeiling->load();
     p.realtimeOversamplingIndex = realtimeQualityFactorIndex[(size_t) choice (qualityRealtime, (int) realtimeQualityFactorIndex.size())];
     p.offlineOversamplingIndex = offlineQualityFactorIndex[(size_t) choice (qualityOffline, (int) offlineQualityFactorIndex.size())];
-    p.chainOrder = choice (chainOrder, chain::numOrders);
     for (size_t i = 0; i < (size_t) numModules; ++i)
         p.moduleEnabled[i] = flag (moduleEnabled[i]);
     p.bypassed = flag (bypass);
