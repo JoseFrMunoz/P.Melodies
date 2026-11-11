@@ -71,6 +71,10 @@ Referencia:
 - **Denormales:** `juce::ScopedNoDenormals` activa *flush-to-zero* en el hilo de audio.
 - **NaN/Inf:** en debug, `debug::checkFinite` detiene la ejecución si aparece uno a la salida de los módulos o del motor. Los tests lo comprueban con parámetros y señales extremos.
 
+## Fase 1: EQ
+
+Diseño de los filtros (prototipos analógicos, ajuste de magnitud hasta Nyquist y proceso con SVF TPT), precisión medida y referencias: [`eq.md`](eq.md).
+
 ## Herramientas de medida de los tests (`tests/Measurement.h`)
 
 Las usarán los tests de las fases 1 a 4. Todo el cálculo es en doble precisión, mucho más exacto que las señales `float` que miden, y cada herramienta se comprueba con señales de resultado conocido en `tests/MeasurementTests.cpp`.
