@@ -113,6 +113,12 @@ const Theme& Theme::dark()
         c.grid = hex (0x15171D);
         c.axisText = hex (0x7E7A72);
         c.module = { hex (0xD4AF37), hex (0x8FA6BF), hex (0xC8743C), hex (0xAD374E) }; // gold, steel, copper, garnet
+
+        // EQ bands (P.P., 2026-11-11): eight close tones around the EQ gold, from light amber (1)
+        // to soft olive green (8). OKLCH lightness 0.80 and chroma 0.125, hue 62° to 146° in
+        // 12° steps (the gold is at about 92°).
+        c.eqBand = { hex (0xF7AB64), hex (0xEEB15B), hex (0xE1B856), hex (0xD3BE58),
+                     hex (0xC3C55F), hex (0xB0CA6C), hex (0x9CCF7B), hex (0x87D38C) };
         return t;
     }();
 

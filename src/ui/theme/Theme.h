@@ -44,6 +44,7 @@ struct Palette
     juce::Colour grid;           // grid lines of graphs (EQ display)
     juce::Colour axisText;       // scale numbers of graphs
     std::array<juce::Colour, numModules> module; // EQ, compressor, saturation, distortion
+    std::array<juce::Colour, 8> eqBand;          // one per EQ band, close to the EQ colour (§12)
 };
 
 /** Sizes in base (100 %) pixels, from docs/design. */
@@ -95,6 +96,12 @@ struct Theme
     juce::Font label (float size = 10.0f) const;
 
     juce::Colour moduleColour (ModuleId id) const noexcept { return colours.module[(size_t) toIndex (id)]; }
+
+    /** Colour of an EQ band's point, area and editor (band 0 to 7). */
+    juce::Colour eqBandColour (int band) const noexcept
+    {
+        return colours.eqBand[(size_t) juce::jlimit (0, (int) colours.eqBand.size() - 1, band)];
+    }
 
     /** "Oscuro", the default theme (docs/design/html/07-plantillas-de-aspecto.html). */
     static const Theme& dark();

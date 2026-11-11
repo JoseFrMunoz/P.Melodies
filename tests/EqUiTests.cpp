@@ -330,6 +330,57 @@ TEST_CASE ("EQ display: projects saved with the two-way scale keep it", "[ui][eq
     }
 }
 
+TEST_CASE ("EQ: every band has its own colour, close to the EQ gold", "[ui][eq][theme][phase1]")
+{
+    const auto& theme = ui::Theme::dark();
+    const auto gold = theme.moduleColour (ModuleId::eq);
+    const auto luminance = [] (juce::Colour c)
+    {
+        const auto channel = [] (juce::uint8 v)
+        {
+            const auto x = v / 255.0;
+            return x <= 0.03928 ? x / 12.92 : std::pow ((x + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * channel (c.getRed()) + 0.7152 * channel (c.getGreen()) + 0.0722 * channel (c.getBlue());
+    };
+    const auto distance = [] (juce::Colour a, juce::Colour b)
+    { return std::abs (a.getRed() - b.getRed()) + std::abs (a.getGreen() - b.getGreen()) + std::abs (a.getBlue() - b.getBlue()); };
+
+    for (int b = 0; b < eq::numBands; ++b)
+    {
+        INFO ("band " << b + 1);
+        const auto colour = theme.eqBandColour (b);
+        // Readable as a graphic on the display background (WCAG 3:1).
+        CHECK ((luminance (colour) + 0.05) / (luminance (theme.colours.window) + 0.05) >= 3.0);
+        // A family around the gold: from amber to olive green, within a quarter turn of its hue.
+        auto hueDifference = std::abs (colour.getHue() - gold.getHue());
+        hueDifference = std::min (hueDifference, 1.0f - hueDifference);
+        CHECK (hueDifference < 0.25f);
+        // And each one differs from its neighbour.
+        if (b > 0)
+            CHECK (distance (colour, theme.eqBandColour (b - 1)) >= 15);
+    }
+
+    // On screen: the selected point is filled with its band's colour, and the editor uses it too.
+    EqUi ui;
+    auto& g = ui.graph();
+    auto& c = ui.controller();
+    const auto first = c.createBand (FilterType::bell, 200.0, 3.0);
+    const auto second = c.createBand (FilterType::bell, 3000.0, -3.0);
+    for (const auto band : { first, second })
+    {
+        INFO ("band " << band + 1);
+        c.setSelectedBand (band);
+        ui.page->refresh();
+        const auto image = g.createComponentSnapshot (g.getLocalBounds(), true, 1.0f);
+        const auto p = g.pointForBand (band).toInt();
+        const auto pixel = image.getPixelAt (p.x - 7, p.y); // inside the filled circle, left of the number
+        CHECK (distance (pixel, theme.eqBandColour (band)) < 12);
+        CHECK (ui.bandPanel().getKnob (EqField::frequency)->getAccentColour() == theme.eqBandColour (band));
+        CHECK (ui.bandPanel().getShapeSelector().getAccentColour() == theme.eqBandColour (band));
+    }
+}
+
 TEST_CASE ("EQ band editor follows the selected band", "[ui][eq][phase1]")
 {
     EqUi ui;

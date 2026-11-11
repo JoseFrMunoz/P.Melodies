@@ -46,6 +46,15 @@ void ShapeSelector::setSelected (int typeIndex)
     }
 }
 
+void ShapeSelector::setAccentColour (juce::Colour colour)
+{
+    if (colour != accent)
+    {
+        accent = colour;
+        repaint();
+    }
+}
+
 void ShapeSelector::paint (juce::Graphics& g)
 {
     const auto& theme = themeOf (*this);
@@ -64,7 +73,7 @@ void ShapeSelector::paint (juce::Graphics& g)
             g.setColour (i == selected ? c.border : c.elevated);
             g.fillRoundedRectangle (area, 5.0f);
         }
-        const auto colour = i == selected ? theme.moduleColour (ModuleId::eq) : (i == hovered ? c.textSecondary : c.textMuted);
+        const auto colour = i == selected ? accent : (i == hovered ? c.textSecondary : c.textMuted);
         icons::draw (g, icons::eqShape (i), area, 16.0f, colour, 1.5f);
     }
 }
@@ -188,7 +197,8 @@ void EqBandPanel::rebuild()
 
     if (visible)
     {
-        const auto accent = themeOf (*this).moduleColour (ModuleId::eq);
+        const auto accent = themeOf (*this).eqBandColour (band);
+        shapes.setAccentColour (accent);
         frequency = std::make_unique<Knob> (controller.parameter (band, EqField::frequency), "Frecuencia");
         gain = std::make_unique<Knob> (controller.parameter (band, EqField::gain), "Ganancia");
         q = std::make_unique<Knob> (controller.parameter (band, EqField::q), "Q");
@@ -251,7 +261,7 @@ void EqBandPanel::paint (juce::Graphics& g)
     }
 
     // Badge with the band number, then "Banda 3 · Campana".
-    const auto accent = theme.moduleColour (ModuleId::eq);
+    const auto accent = theme.eqBandColour (band);
     auto title = titleArea;
     const auto badge = title.removeFromLeft (20).withSizeKeepingCentre (20, 20).toFloat();
     g.setColour (controller.getBand (band).bypassed ? c.textDim : accent);

@@ -549,12 +549,13 @@ void EqGraph::paint (juce::Graphics& g)
                 area.lineTo ((float) last * curveStep, yForGain (0.0));
                 area.lineTo ((float) first * curveStep, yForGain (0.0));
                 area.closeSubPath();
-                g.setColour (accent.withAlpha (0.14f));
+                const auto colour = theme.eqBandColour (selected);
+                g.setColour (colour.withAlpha (0.14f));
                 g.fillPath (area);
                 juce::Path dashed;
                 const float dashes[] = { 3.0f, 3.0f };
                 juce::PathStrokeType (1.0f).createDashedStroke (dashed, contribution, dashes, 2);
-                g.setColour (accent.withAlpha (0.8f));
+                g.setColour (colour.withAlpha (0.8f));
                 g.fillPath (dashed);
             }
         }
@@ -594,12 +595,13 @@ void EqGraph::paint (juce::Graphics& g)
         const auto band = controller.getBand (b);
         const auto p = pointForBand (b);
         const auto number = juce::String (b + 1);
+        const auto colour = theme.eqBandColour (b);
         g.setFont (theme.ui (10.0f, Weight::semiBold));
         if (b == selected)
         {
-            g.setColour (accent.withAlpha (0.18f));
+            g.setColour (colour.withAlpha (0.18f));
             g.fillEllipse (juce::Rectangle<float> (30.0f, 30.0f).withCentre (p));
-            g.setColour (band.bypassed ? c.textDim : accent);
+            g.setColour (band.bypassed ? c.textDim : colour);
             g.fillEllipse (juce::Rectangle<float> (20.0f, 20.0f).withCentre (p));
             g.setColour (c.onAccent);
         }
@@ -620,7 +622,7 @@ void EqGraph::paint (juce::Graphics& g)
             }
             else
             {
-                g.setColour (b == hovered ? accent.brighter (0.3f) : accent);
+                g.setColour (b == hovered ? colour.brighter (0.3f) : colour);
                 g.drawEllipse (circle, 1.6f);
                 g.setColour (c.text);
             }

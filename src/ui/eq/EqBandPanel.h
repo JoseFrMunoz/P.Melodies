@@ -22,6 +22,10 @@ public:
 
     void setSelected (int typeIndex);
     int getSelected() const noexcept { return selected; }
+
+    /** Colour of the selected shape (the band's colour). */
+    void setAccentColour (juce::Colour colour);
+    juce::Colour getAccentColour() const noexcept { return accent; }
     std::function<void (int)> onChange;
 
     static constexpr int buttonSize = 28;
@@ -39,6 +43,7 @@ private:
 
     int selected = 0;
     int hovered = -1;
+    juce::Colour accent { 0xffd4af37 };
 };
 
 /**

@@ -40,6 +40,7 @@ public:
     ~Knob() override;
 
     void setAccentColour (juce::Colour colour);
+    juce::Colour getAccentColour() const noexcept { return accent; }
     void setFormatter (Formatter newFormatter);
 
     /** Current value formatted for display ("−1,5 dB"). */
