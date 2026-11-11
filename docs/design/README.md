@@ -18,3 +18,4 @@ Diseño base de la interfaz (v1). La funcionalidad, los controles y las interacc
 - Los valores que aparecen (400 Hz, −18 dB…) son de ejemplo.
 - La pantalla 07 muestra el tema Oscuro con la paleta de marca. Claro, Neón y Vintage conservan sus colores anteriores hasta la fase 5.
 - Los PNG se generan desde los HTML con Chromium (Playwright), a 2x, con las fuentes de `assets/fonts/`.
+- **Pantalla 06, fila «Arrastrando»:** la línea de destino se sustituyó el 2026-11-11 por el reordenado en vivo (especificación §8.1 y §12). Al arrastrar, los demás módulos se apartan deslizándose, un hueco punteado en oro marca dónde quedará el módulo y, al soltar, se desliza a ese hueco. La pantalla conserva la línea; manda la especificación.

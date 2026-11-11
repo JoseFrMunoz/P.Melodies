@@ -193,7 +193,8 @@ Los manuales de todas las referencias están en [`docs/referencias/README.md`](r
 - **Panel izquierdo "Cadena de señal":**
   - Lista vertical de los 4 módulos en el orden real, entre las marcas IN y OUT.
   - Cada fila lleva asa de arrastre, color del módulo, nombre, un resumen de estado y el botón de encendido (bypass).
-  - Al arrastrar desde el asa, una línea indica dónde caerá el módulo. El clic abre el módulo en el panel derecho.
+  - **Reordenado en vivo** (§12, 2026-11-11): al arrastrar desde el asa, los demás módulos se apartan deslizándose en cuanto el arrastrado pasa la mitad de su hueco, y un hueco punteado marca dónde quedará. Al soltar, en cualquier punto, el módulo se desliza a ese hueco; no hace falta apuntar. El orden llega al plugin al soltar, como un solo gesto (y un solo paso de deshacer en la fase 5). Los cambios de orden desde fuera (automatización, presets, deshacer) también se animan.
+  - El clic abre el módulo en el panel derecho.
   - Estados: normal, seleccionado, apagado y arrastrando (pantalla 06).
 - **Panel derecho:** solo el módulo seleccionado, a tamaño completo.
 - **Pie:** la sección global (3.2).
@@ -247,7 +248,9 @@ Los manuales de todas las referencias están en [`docs/referencias/README.md`](r
 Lo que no está en la fase correspondiente no se hace: las peticiones de §13 esperan a que P.P. les asigne una fase.
 
 ### Fase 0 — Base común
-**Estado:** hecha y en verde en el CI. Pendiente de las pruebas de P.P. en FL Studio y de su visto bueno.
+**Estado:** visto bueno de P.P. el 2026-11-11 tras probarla en FL Studio. De esa prueba salieron dos cambios, ya hechos, que P.P. comprobará durante la fase 1:
+- **Mix global «no funciona»:** funciona, pero en la fase 0 ningún módulo procesa, así que la señal procesada y la original son la misma y cualquier mezcla suena igual. Un test nuevo sigue todo el camino (arrastrar el knob con el ratón → parámetro → mezcla en el audio). Se oirá en cuanto el EQ cambie el sonido.
+- **Reordenado en vivo y fluido** en el panel de la cadena (§8.1).
 
 Todo lo que comparten los módulos. Si falla aquí, fallaría en los cuatro.
 - Repo, CMake, JUCE fijado, `LICENSE` AGPLv3, `CLAUDE.md`, `docs/ESPECIFICACION.md`, README inicial y `.gitignore`.
@@ -283,6 +286,9 @@ Sección 4 completa, DSP e interfaz.
   - Cada banda es un objeto independiente con su propia ruta de proceso.
   - Los parámetros de banda se suavizan de forma que más adelante puedan recibir una modulación.
 - El analizador de espectro recibe las muestras por la cola sin bloqueos de la fase 0.
+- **Pruebas manuales pendientes de la fase 0** (van en la lista de cierre de la fase 1):
+  - Con una banda del EQ realzada, el Mix global pasa del sonido original (0 %) al procesado (100 %).
+  - El reordenado en vivo del panel de la cadena es fluido y sin clics.
 - **Tests:**
   - Respuesta de cada tipo de filtro frente a la respuesta analítica, con tolerancia, en varias frecuencias de muestreo.
   - Barrido de automatización de frecuencia y ganancia sin clics.
@@ -400,6 +406,8 @@ Decisiones tomadas con P.P. Tienen el mismo valor que el resto de la especificac
 | Manuales de referencia (2026-11-07) | Índice en `docs/referencias/README.md`. Se leen al empezar la fase del módulo, solo para emular el comportamiento (regla 8). Los PDF no se suben al repositorio (derechos de terceros): se enlazan. |
 | Paleta de marca (2026-11-07) | «Obsidiana y oro» en el tema Oscuro por defecto: base casi negra con matiz frío, textos cálidos, oro viejo `#D4AF37` como firma y módulos en oro, acero, cobre y granate (§8.5). Es la firma visual de P.P.: verla y saber que es suyo. El granate se aclaró de `#A3344A` a `#AD374E` para llegar al contraste mínimo de 3:1 que piden los elementos gráficos; un test comprueba el contraste de todo el tema. |
 | Referencia de la distorsión (2026-11-07) | Distructor de FL Studio como principal; Fruity Fast Dist, Fruity WaveShaper y Saturn 2 como apoyo. Se puede cambiar si no convence. |
+| Visto bueno de la fase 0 (2026-11-11) | P.P. la probó en FL Studio: «todo bien» salvo el Mix global y el arrastre del panel de la cadena, y pidió seguir con las fases. Los dos cambios se hacen en `phase/0-foundation` y él los comprueba durante la fase 1. La fase 1 sale de esa rama. |
+| Reordenado en vivo (2026-11-11) | A petición de P.P.: al arrastrar un módulo, los demás se apartan solos y con animación, y al soltar el módulo se desliza a su hueco sin tener que apuntar a una línea. Sustituye a la línea de destino de la pantalla 06. El orden se aplica al soltar, como un solo gesto. |
 
 ---
 
