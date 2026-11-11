@@ -11,6 +11,8 @@
 
 #include "TestHelpers.h"
 
+#include "core/Parameters.h"
+
 #include <catch2/catch_test_macros.hpp>
 
 #include <chrono>
@@ -70,11 +72,28 @@ void refill (juce::AudioBuffer<float>& io, const juce::AudioBuffer<float>& sourc
         io.copyFrom (ch, 0, source, ch % source.getNumChannels(), 0, blockSize);
 }
 
-CpuResult measurePlugin (const std::string& name, bool offline)
+/** Plugin with the EQ at full load: eight bands (two 96 dB/oct cuts), Warm character. */
+void loadEq (PMelodiesProcessor& processor)
+{
+    using param::EqField;
+    setParameter (processor, param::id::eqCharacter, 2.0f);
+    for (int b = 0; b < eq::numBands; ++b)
+    {
+        setParameter (processor, param::eqBandId (b, EqField::active), 1.0f);
+        setParameter (processor, param::eqBandId (b, EqField::type), (float) (b == 0 ? 3 : b == 7 ? 4 : 0));
+        setParameter (processor, param::eqBandId (b, EqField::slope), 7.0f);
+        setParameter (processor, param::eqBandId (b, EqField::gain), b % 2 == 0 ? 4.0f : -4.0f);
+    }
+}
+
+CpuResult measurePlugin (const std::string& name, bool offline, bool fullEq = false, bool automateEq = false)
 {
     PMelodiesProcessor processor;
     prepareProcessor (processor, sampleRate, blockSize, 2);
     processor.setNonRealtime (offline);
+    if (fullEq)
+        loadEq (processor);
+    int block = 0;
 
     const auto noise = makeNoise (2, blockSize, 0.5f);
     juce::AudioBuffer<float> io (4, blockSize); // main stereo + stereo sidechain
@@ -82,6 +101,10 @@ CpuResult measurePlugin (const std::string& name, bool offline)
     return measure (name, [&]
     {
         refill (io, noise, 4);
+        if (automateEq) // every band's frequency moves every block, like dense automation
+            for (int b = 0; b < eq::numBands; ++b)
+                setParameter (processor, param::eqBandId (b, param::EqField::frequency),
+                              (float) (100.0 * std::pow (2.0, b + std::sin (0.05 * ++block))));
         processor.processBlock (io, midi);
     });
 }
@@ -133,6 +156,8 @@ TEST_CASE ("CPU use of the plugin and of the oversampling infrastructure", "[.cp
     std::vector<CpuResult> results;
     results.push_back (measurePlugin ("Plugin, default settings, playing", false));
     results.push_back (measurePlugin ("Plugin, default settings, exporting", true));
+    results.push_back (measurePlugin ("Plugin, EQ with 8 bands (two 96 dB/oct cuts) and Warm", false, true));
+    results.push_back (measurePlugin ("Same, every band's frequency automated every block", false, true, true));
     results.push_back (measureOversampledChain ("4 active modules at 2x (default playing quality)", 1));
     results.push_back (measureOversampledChain ("4 active modules at 8x (default export quality)", 3));
     results.push_back (measureOversampledChain ("4 active modules at 16x (maximum quality)", 4));
