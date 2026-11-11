@@ -690,7 +690,7 @@ void EqGraph::paint (juce::Graphics& g)
         // Hint.
         g.setFont (theme.ui (11.0f));
         g.setColour (c.textMuted);
-        g.drawText (text ("Doble clic: nueva banda \xc2\xb7 Rueda: Q (cortes: pendiente; Ctrl: Q) \xc2\xb7 Alt+clic: bypass"),
+        g.drawText (text ("Doble clic o arrastrar la l\xc3\xadnea: nueva banda \xc2\xb7 Rueda: Q (cortes: pendiente; Ctrl: Q) \xc2\xb7 Alt+clic: bypass"),
                     juce::Rectangle<float> (12.0f, 6.0f, bounds.getWidth() - 80.0f, 16.0f), juce::Justification::centredLeft, true);
     }
 
@@ -746,11 +746,55 @@ void EqGraph::paint (juce::Graphics& g)
         drawPoint (selected); // its values are in the mini panel (EqBandPopup)
     }
 
+    // Over the curve: a ghost point with the shape a new band would have there.
+    if (linePreview.has_value() && dragging < 0)
+    {
+        const auto p = linePreview->point;
+        juce::Path ring, dashed;
+        ring.addEllipse (juce::Rectangle<float> (14.0f, 14.0f).withCentre (p));
+        const float dashes[] = { 2.5f, 2.0f };
+        juce::PathStrokeType (1.4f).createDashedStroke (dashed, ring, dashes, 2);
+        g.setColour (c.window);
+        g.fillEllipse (juce::Rectangle<float> (14.0f, 14.0f).withCentre (p));
+        g.setColour (accent);
+        g.fillPath (dashed);
+
+        auto tag = juce::Rectangle<float> (26.0f, 22.0f).withCentre ({ p.x, p.y - 23.0f });
+        if (tag.getY() < 2.0f)
+            tag.setY (p.y + 12.0f);
+        tag = tag.withX (juce::jlimit (2.0f, bounds.getRight() - 28.0f, tag.getX()));
+        g.setColour (c.elevated);
+        g.fillRoundedRectangle (tag, 6.0f);
+        g.setColour (c.border);
+        g.drawRoundedRectangle (tag.reduced (0.5f), 6.0f, 1.0f);
+        icons::draw (g, icons::eqShape ((int) linePreview->type), tag, 16.0f, c.textSecondary, 1.5f);
+    }
+
     g.setColour (c.borderSubtle);
     g.drawRoundedRectangle (bounds.reduced (0.5f), radius, 1.0f);
 }
 
 //==============================================================================
+std::optional<EqGraph::LinePreview> EqGraph::linePreviewAt (juce::Point<float> position)
+{
+    if (bandAt (position) >= 0 || controller.getNumActiveBands() >= eq::numBands || getWidth() <= 0)
+        return std::nullopt;
+    if (! curvesValid)
+        updateCurves();
+    if (totalDb.empty())
+        return std::nullopt;
+
+    // The overall curve at the pointer's x (it is sampled every curveStep pixels).
+    const auto at = juce::jlimit (0.0f, (float) (totalDb.size() - 1), position.x / (float) curveStep);
+    const auto i = (size_t) at;
+    const auto next = std::min (i + 1, totalDb.size() - 1);
+    const auto db = totalDb[i] + (at - (float) i) * (totalDb[next] - totalDb[i]);
+    const auto y = yForGain (db);
+    if (std::abs (position.y - y) > lineGrabDistance)
+        return std::nullopt;
+    return LinePreview { { position.x, y }, EqController::typeForNewBand (frequencyForX (position.x), false) };
+}
+
 void EqGraph::mouseMove (const juce::MouseEvent& e)
 {
     const auto band = bandAt (e.position);
@@ -759,12 +803,19 @@ void EqGraph::mouseMove (const juce::MouseEvent& e)
         hovered = band;
         repaint();
     }
-    setMouseCursor (band >= 0 ? juce::MouseCursor::DraggingHandCursor : juce::MouseCursor::CrosshairCursor);
+    const auto preview = linePreviewAt (e.position);
+    if (preview.has_value() || linePreview.has_value())
+    {
+        linePreview = preview;
+        repaint();
+    }
+    setMouseCursor (band >= 0 || preview.has_value() ? juce::MouseCursor::DraggingHandCursor : juce::MouseCursor::CrosshairCursor);
 }
 
 void EqGraph::mouseExit (const juce::MouseEvent&)
 {
     hovered = -1;
+    linePreview.reset();
     repaint();
 }
 
@@ -790,6 +841,9 @@ void EqGraph::mouseDown (const juce::MouseEvent& e)
     if (band < 0)
     {
         controller.setSelectedBand (-1); // a click on the background deselects (and closes the mini panel)
+        // On the curve, a drag (not a click) will create a band there.
+        if (linePreviewAt (e.position).has_value())
+            linePress = e.position;
         updatePopup();
         repaint();
         return;
@@ -808,11 +862,26 @@ void EqGraph::mouseDown (const juce::MouseEvent& e)
 
 void EqGraph::mouseDrag (const juce::MouseEvent& e)
 {
+    if (linePress.has_value())
+    {
+        const auto start = *linePress;
+        if (e.position.getDistanceFrom (start) < lineDragThreshold)
+            return;
+        // Dragging the curve: a band of the shape of that zone, at 0 dB, then the drag moves it.
+        linePress.reset();
+        linePreview.reset();
+        const auto band = controller.createBand (EqController::typeForNewBand (frequencyForX (start.x), false),
+                                                 frequencyForX (start.x), 0.0);
+        if (band < 0)
+            return;
+        beginDrag (band, start);
+    }
     dragTo (e.position, e.mods.isCtrlDown() || e.mods.isCommandDown());
 }
 
 void EqGraph::mouseUp (const juce::MouseEvent&)
 {
+    linePress.reset();
     endDrag();
 }
 

@@ -89,6 +89,7 @@ Los manuales de todas las referencias están en [`docs/referencias/README.md`](r
 - **Analizador de espectro:** pre, post u off. FFT con ventana, promediado suave y pendiente de visualización de 4,5 dB/oct. Escala de la curva de ±6, ±12 o ±30 dB (§12, revisión del 2026-11-11).
 - **Interacción** (ver pantalla 01 y 06):
   - Doble clic en zona vacía crea una banda. El tipo depende de la posición: cerca de los extremos crea shelf o corte.
+  - Al pasar el ratón por la curva, un punto fantasma muestra el icono de la forma que se crearía allí; arrastrar la curva desde ese punto crea la banda y la mueve (un clic solo deselecciona). Revisión de P.P., §12.
   - Arrastrar un punto mueve frecuencia y ganancia.
   - La rueda cambia la Q; en los cortes, la pendiente (un paso por muesca), y Ctrl+rueda, la Q. Shift: pasos finos de Q.
   - Alt+clic hace bypass de la banda.

@@ -645,6 +645,81 @@ TEST_CASE ("EQ solo: dragging the held headphones moves the band, Ctrl sets the 
     CHECK (c.getSoloBand() == -1);
 }
 
+TEST_CASE ("EQ display: over the curve a ghost point shows the shape; dragging the curve creates the band", "[ui][eq][phase1]")
+{
+    EqUi ui;
+    auto& g = ui.graph();
+    auto& c = ui.controller();
+    const auto left = juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier);
+    const auto on = [&] (double hz, double db) { return juce::Point<float> (g.xForFrequency (hz), g.yForGain (db)); };
+
+    // No bands: the curve is the 0 dB line. The shape follows the zone, as with the double click.
+    for (const auto& [hz, type] : { std::pair { 25.0, FilterType::lowCut }, std::pair { 50.0, FilterType::lowShelf },
+                                    std::pair { 1000.0, FilterType::bell }, std::pair { 12000.0, FilterType::highShelf },
+                                    std::pair { 18000.0, FilterType::highCut } })
+    {
+        INFO (hz << " Hz");
+        g.mouseMove (mouseEvent (g, on (hz, 0.0) + juce::Point<float> (0.0f, 5.0f), juce::ModifierKeys()));
+        REQUIRE (g.getLinePreview().has_value());
+        CHECK (g.getLinePreview()->type == type);
+        CHECK (g.getLinePreview()->point.y == Catch::Approx (g.yForGain (0.0)).margin (0.5));
+    }
+
+    // Away from the curve, nothing; leaving the display hides it.
+    g.mouseMove (mouseEvent (g, on (1000.0, 0.0) + juce::Point<float> (0.0f, ui::EqGraph::lineGrabDistance + 4.0f), juce::ModifierKeys()));
+    CHECK_FALSE (g.getLinePreview().has_value());
+    g.mouseMove (mouseEvent (g, on (1000.0, 0.0), juce::ModifierKeys()));
+    CHECK (g.getLinePreview().has_value());
+    g.mouseExit (mouseEvent (g, on (1000.0, 0.0), juce::ModifierKeys()));
+    CHECK_FALSE (g.getLinePreview().has_value());
+
+    // A click on the curve (no drag) creates nothing.
+    g.mouseDown (mouseEvent (g, on (1000.0, 0.0), left));
+    g.mouseUp (mouseEvent (g, on (1000.0, 0.0), juce::ModifierKeys()));
+    CHECK (c.getNumActiveBands() == 0);
+
+    // Dragging it up creates a bell there and raises it, as one drag.
+    g.mouseDown (mouseEvent (g, on (1000.0, 0.0), left));
+    g.mouseDrag (mouseEvent (g, on (1000.0, 0.0) + juce::Point<float> (0.0f, -2.0f), left)); // under the threshold
+    CHECK (c.getNumActiveBands() == 0);
+    g.mouseDrag (mouseEvent (g, on (1000.0, 6.0), left));
+    REQUIRE (c.getNumActiveBands() == 1);
+    const auto band = c.getSelectedBand();
+    REQUIRE (band >= 0);
+    CHECK (c.getBand (band).settings.type == FilterType::bell);
+    CHECK (c.getBand (band).settings.frequency == Catch::Approx (1000.0).epsilon (0.003));
+    CHECK (c.getBand (band).settings.gainDb == Catch::Approx (6.0).margin (0.1));
+    g.mouseUp (mouseEvent (g, on (1000.0, 6.0), juce::ModifierKeys()));
+    CHECK (g.getPopup().isVisible());
+
+    // With bands, the curve is the overall response: grab it where it is, not on the 0 dB line.
+    // (Over a point there is no ghost: the point is grabbed instead.)
+    g.mouseMove (mouseEvent (g, g.pointForBand (band), juce::ModifierKeys()));
+    CHECK_FALSE (g.getLinePreview().has_value());
+    ui.page->refresh();
+    const auto curveAt600 = [&]
+    {
+        g.mouseMove (mouseEvent (g, on (600.0, 0.0), juce::ModifierKeys()));
+        return g.getLinePreview();
+    }();
+    CHECK_FALSE (curveAt600.has_value()); // at 600 Hz the curve is well above 0 dB
+    g.mouseDown (mouseEvent (g, { g.xForFrequency (300.0), 40.0f }, left)); // deselect
+    g.mouseUp (mouseEvent (g, { g.xForFrequency (300.0), 40.0f }, juce::ModifierKeys()));
+    const auto preview = g.linePreviewAt ({ g.xForFrequency (700.0), g.yForGain (4.0) });
+    REQUIRE (preview.has_value());
+    CHECK (g.gainForY (preview->point.y) > 2.0);
+    g.mouseDown (mouseEvent (g, preview->point, left));
+    g.mouseDrag (mouseEvent (g, preview->point + juce::Point<float> (0.0f, g.yForGain (0.0) - g.yForGain (3.0)), left));
+    g.mouseUp (mouseEvent (g, preview->point, juce::ModifierKeys()));
+    REQUIRE (c.getNumActiveBands() == 2);
+    CHECK (c.getBand (c.getSelectedBand()).settings.gainDb == Catch::Approx (-3.0).margin (0.1)); // starts at 0 dB, moved by the drag
+
+    // With all eight bands in use there is nothing to create.
+    while (c.getNumActiveBands() < eq::numBands)
+        c.createBand (FilterType::bell, 5000.0 + 100.0 * c.getNumActiveBands(), 0.0);
+    CHECK_FALSE (g.linePreviewAt (on (40.0, 0.0)).has_value());
+}
+
 TEST_CASE ("EQ band editor follows the selected band", "[ui][eq][phase1]")
 {
     EqUi ui;

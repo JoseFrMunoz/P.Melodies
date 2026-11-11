@@ -12,6 +12,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace pm::ui
@@ -24,6 +25,9 @@ namespace pm::ui
     Mouse and keyboard:
     - Double click on the background: new band; its shape depends on where (§12), its gain is the
       height of the click.
+    - Over the curve, away from the points, a ghost point shows the shape a new band would have
+      there; dragging the curve from that spot creates it and moves it (a click alone still just
+      deselects).
     - Drag a point: frequency and gain (for shapes without gain, the vertical drag sets the Q).
       Ctrl: fine adjustment. Beyond the scale (±6 or ±12 dB) the display switches to the next one
       by itself; it never shrinks on its own.
@@ -57,6 +61,22 @@ public:
 
     /** "400 Hz · −4,0 dB" (or "· Q 2,50" for shapes without gain): the point's accessible description. */
     juce::String labelText (int index) const;
+
+    /** What a new band on the curve would be, at the pointer: the spot on the curve and its shape. */
+    struct LinePreview
+    {
+        juce::Point<float> point;
+        dsp::eq::FilterType type;
+    };
+    /** Preview for a pointer position, if it is close enough to the curve (and not on a point). */
+    std::optional<LinePreview> linePreviewAt (juce::Point<float> position);
+    /** Preview currently shown (the pointer is over the curve). */
+    const std::optional<LinePreview>& getLinePreview() const noexcept { return linePreview; }
+
+    /** Pixels from the curve within which it can be grabbed. */
+    static constexpr float lineGrabDistance = 8.0f;
+    /** Movement that turns a press on the curve into a new band (less is a click). */
+    static constexpr float lineDragThreshold = 3.0f;
 
     // Actions, public so tests can run them without synthesising mouse events.
     int createBandAt (juce::Point<float> position);
@@ -143,6 +163,8 @@ private:
     bool curvesValid = false;
 
     int hovered = -1;
+    std::optional<LinePreview> linePreview;
+    std::optional<juce::Point<float>> linePress; // pressed on the curve; becomes a band if dragged
     std::unique_ptr<EqBandPopup> popup;
     int soloBand = -1;      // held from the mini panel
     int soloPrevious = -1;  // solo before it was held (the editor's Solo button latches)
