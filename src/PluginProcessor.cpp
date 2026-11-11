@@ -173,14 +173,39 @@ void PMelodiesProcessor::applyEqAnalyzer()
     engine.getEqAnalyzer().setPoint (mode == EqAnalyzer::pre ? Point::pre : mode == EqAnalyzer::post ? Point::post : Point::off);
 }
 
-bool PMelodiesProcessor::isEqRangeWide() const
+int PMelodiesProcessor::getEqRangeDb() const
 {
-    return (bool) state.state.getProperty (eqRangeProperty, false);
+    // Saved as the scale in dB. Earlier phase 1 builds saved a flag: 0 (±12) or 1 (±30).
+    const int value = state.state.getProperty (eqRangeProperty, 12);
+    if (value == 1)
+        return 30;
+    for (const auto r : eqRangesDb)
+        if (value == r)
+            return r;
+    return 12;
 }
 
-void PMelodiesProcessor::setEqRangeWide (bool wide)
+void PMelodiesProcessor::setEqRangeDb (int rangeDb)
 {
-    state.state.setProperty (eqRangeProperty, wide, nullptr);
+    auto snapped = eqRangesDb.back();
+    for (const auto r : eqRangesDb)
+    {
+        if (r >= rangeDb)
+        {
+            snapped = r;
+            break;
+        }
+    }
+    state.state.setProperty (eqRangeProperty, snapped, nullptr);
+}
+
+int PMelodiesProcessor::getEqRangeIndex() const
+{
+    const auto range = getEqRangeDb();
+    for (size_t i = 0; i < eqRangesDb.size(); ++i)
+        if (eqRangesDb[i] == range)
+            return (int) i;
+    return 1;
 }
 
 void PMelodiesProcessor::getStateInformation (juce::MemoryBlock& destData)

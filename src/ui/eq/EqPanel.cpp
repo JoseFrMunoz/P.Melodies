@@ -19,7 +19,7 @@ EqPanel::EqPanel (PMelodiesProcessor& processor)
     : controller (processor),
       character (param::eqCharacterNames()),
       analyser ({ "Pre", "Post", "Off" }),
-      range ({ text ("\xc2\xb1" "12"), text ("\xc2\xb1" "30") }),
+      range ({ text ("\xc2\xb1" "6"), text ("\xc2\xb1" "12"), text ("\xc2\xb1" "30") }),
       graph (controller),
       bandPanel (controller)
 {
@@ -34,9 +34,11 @@ EqPanel::EqPanel (PMelodiesProcessor& processor)
     analyser.onChange = [this] (int index) { controller.getProcessor().setEqAnalyzer ((PMelodiesProcessor::EqAnalyzer) index); };
     analyser.setTooltip (text ("Analizador\nEspectro de la entrada (Pre) o la salida (Post) del EQ, o apagado."));
 
-    range.setSelectedIndex (processor.isEqRangeWide() ? 1 : 0, juce::dontSendNotification);
-    range.onChange = [this] (int index) { controller.getProcessor().setEqRangeWide (index == 1); };
-    range.setTooltip (text ("Escala de la gr\xc3\xa1" "fica\n\xc2\xb1" "12 o \xc2\xb1" "30 dB. Pasa sola a \xc2\xb1" "30 al llevar una banda m\xc3\xa1s all\xc3\xa1 de 12 dB."));
+    range.setSelectedIndex (processor.getEqRangeIndex(), juce::dontSendNotification);
+    range.onChange = [this] (int index)
+    { controller.getProcessor().setEqRangeDb (PMelodiesProcessor::eqRangesDb[(size_t) juce::jlimit (0, 2, index)]); };
+    range.setTooltip (text ("Escala de la gr\xc3\xa1" "fica\n\xc2\xb1" "6, \xc2\xb1" "12 o \xc2\xb1" "30 dB. Si llevas una banda m\xc3\xa1s all\xc3\xa1, "
+                            "pasa sola a la siguiente."));
 
     controller.onSelectionChanged = [this]
     {
@@ -59,7 +61,7 @@ void EqPanel::refresh()
 {
     auto& processor = controller.getProcessor();
     analyser.setSelectedIndex ((int) processor.getEqAnalyzer(), juce::dontSendNotification);
-    range.setSelectedIndex (processor.isEqRangeWide() ? 1 : 0, juce::dontSendNotification);
+    range.setSelectedIndex (processor.getEqRangeIndex(), juce::dontSendNotification);
     graph.refresh();
     bandPanel.refresh();
 

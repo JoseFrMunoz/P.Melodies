@@ -86,11 +86,11 @@ Los manuales de todas las referencias están en [`docs/referencias/README.md`](r
   - *Subtle:* saturación suave tipo transformador.
   - *Warm:* saturación más marcada tipo válvula, con armónicos pares.
   - Se aplica tras el filtrado y es muy sutil a niveles normales.
-- **Analizador de espectro:** pre, post u off. FFT con ventana, promediado suave y pendiente de visualización de 4,5 dB/oct. Escala de la curva de ±12 o ±30 dB.
+- **Analizador de espectro:** pre, post u off. FFT con ventana, promediado suave y pendiente de visualización de 4,5 dB/oct. Escala de la curva de ±6, ±12 o ±30 dB (§12, revisión del 2026-11-11).
 - **Interacción** (ver pantalla 01 y 06):
   - Doble clic en zona vacía crea una banda. El tipo depende de la posición: cerca de los extremos crea shelf o corte.
   - Arrastrar un punto mueve frecuencia y ganancia.
-  - La rueda cambia la Q.
+  - La rueda cambia la Q; en los cortes, la pendiente (un paso por muesca), y Ctrl+rueda, la Q. Shift: pasos finos de Q.
   - Alt+clic hace bypass de la banda.
   - Al seleccionar una banda se muestra su panel: tipo, frecuencia, ganancia, Q, pendiente, *Solo* (escucha solo esa banda) y *Bypass*, con la papelera para eliminarla.
   - Etiqueta flotante con la frecuencia y la ganancia junto al punto seleccionado.
@@ -427,8 +427,9 @@ Decisiones tomadas con P.P. Tienen el mismo valor que el resto de la especificac
 | EQ: cuánto colorea (2026-11-11, fase 1) | *Subtle* (transformador): armónicos impares, algo más en graves, ≈ 0,1 % con un tono de 1 kHz a −12 dBFS. *Warm* (válvula): sobre todo 2.º armónico, ≈ 0,5 %. Ambos crecen con el nivel. Se afina de oído con P.P. |
 | EQ: solo de banda (2026-11-11, fase 1) | Como en Pro-Q: se oye la zona que toca la banda (pasa-banda con su frecuencia y su Q; en shelves, la zona del shelf), y en los cortes lo que se quita. Una sola banda en solo a la vez. |
 | EQ: tilt shelf (2026-11-11, fase 1) | Con ganancia +6 dB, los agudos suben 6 dB y los graves bajan 6 dB, girando sobre la frecuencia de la banda. |
-| EQ: extras de manejo (2026-11-11, fase 1) | Supr borra la banda seleccionada; Ctrl al arrastrar un punto da ajuste fino; doble clic en un punto permite escribir frecuencia, ganancia y Q; clic derecho en un punto abre un menú (tipo, bypass, borrar); la escala pasa sola de ±12 a ±30 al llevar una banda más allá de 12 dB. |
-| EQ: funciones de Pro-Q 4 fuera de la especificación (2026-11-11, fase 1) | Ninguna en la v1: interacción ganancia-Q, pendiente en campanas y shelves, pendientes fraccionarias, brickwall, flat tilt, pasa-todo, selección múltiple y crear arrastrando la curva. Si P.P. quiere alguna, va a §13. |
+| EQ: extras de manejo (2026-11-11, fase 1) | Supr borra la banda seleccionada; Ctrl al arrastrar un punto da ajuste fino; doble clic en un punto permite escribir frecuencia, ganancia y Q; clic derecho en un punto abre un menú (tipo, bypass, borrar); la escala pasa sola a la siguiente (±6 → ±12 → ±30) al llevar una banda más allá; nunca se encoge sola. |
+| EQ: funciones de Pro-Q 4 fuera de la especificación (2026-11-11, fase 1) | Ninguna en la v1: interacción ganancia-Q, pendiente en campanas y shelves, pendientes fraccionarias, brickwall, flat tilt, pasa-todo y selección múltiple. Si P.P. quiere alguna, va a §13. (Crear arrastrando sobre la línea entró en la revisión de P.P., fila siguiente.) |
+| EQ: revisión de P.P. (2026-11-11, fase 1) | Tras ver la fase 1 y un vídeo de Pro-Q 4 (solo comportamiento, regla 8), P.P. aprobó el boceto y todas las recomendaciones: **(1) Rueda:** en los cortes cambia la pendiente (6 → 96 dB/oct, un paso por muesca) y Ctrl+rueda la Q; en las demás formas, la Q; el ajuste fino de la rueda pasa a Shift. **(2) Mini panel** de la banda al hacer clic en un punto: bypass, tipo (despliega las 8 formas), solo, eliminar y valores (frecuencia con su nota, ganancia, Q o pendiente). Sustituye a la etiqueta flotante; va encima del punto (debajo si no cabe) y lo sigue al arrastrar. Se cierra con un clic en el fondo, Esc o al borrar la banda; al pasar por otro punto solo se ilumina. **(3) Solo arrastrable:** suena mientras se mantienen pulsados los auriculares del mini panel; el arrastre horizontal mueve la frecuencia y con Ctrl cambia la Q; el vertical no hace nada. Al soltar se apaga. El botón «Solo» del editor de abajo sigue fijo. **(4) Crear** también con clic y arrastre sobre la línea, además del doble clic; un clic en el fondo sigue deseleccionando. Al pasar el ratón por la línea, un punto fantasma muestra el icono de la forma que se crearía. **(5) Notas** con la numeración de FL Studio (Do central = C5), y la frecuencia se puede escribir como nota («A5», «C#3+13»). **(6) Colores:** 8 tonos cercanos al oro del EQ, del ámbar al verde oliva claro, uno por banda; la curva total sigue en oro. **(7) Escala ±6 dB** (líneas cada 3 dB) junto a ±12 y ±30; al abrir sigue en ±12. |
 
 ---
 

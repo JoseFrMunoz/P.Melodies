@@ -24,8 +24,10 @@ namespace pm::ui
     - Double click on the background: new band; its shape depends on where (§12), its gain is the
       height of the click.
     - Drag a point: frequency and gain (for shapes without gain, the vertical drag sets the Q).
-      Ctrl: fine adjustment. Beyond ±12 dB the scale switches to ±30 dB by itself.
-    - Wheel over a point (or with a band selected): Q.
+      Ctrl: fine adjustment. Beyond the scale (±6 or ±12 dB) the display switches to the next one
+      by itself; it never shrinks on its own.
+    - Wheel over a point (or with a band selected): Q; in the low and high cuts, the slope
+      (6 → 96 dB/oct, one step per notch). Ctrl+wheel: always the Q. Shift: finer Q steps.
     - Alt+click a point: bypass. Right click: menu with shape, bypass and delete.
     - Double click a point: type its frequency, gain and Q. Delete (Supr): deletes the band.
 */
@@ -58,7 +60,13 @@ public:
     void beginDrag (int index, juce::Point<float> position);
     void dragTo (juce::Point<float> position, bool fine);
     void endDrag();
-    void wheel (int index, float deltaY, bool fine);
+    void wheel (int index, float deltaY, bool qInsteadOfSlope, bool fine);
+
+    /** Widens the display scale until gainDb fits (never narrows it). */
+    void showGain (double gainDb);
+
+    /** Wheel movement that makes one slope step: one notch of a mouse wheel (JUCE gives 0.23). */
+    static constexpr float slopeWheelStep = 0.2f;
 
     enum MenuItem
     {
@@ -106,6 +114,8 @@ private:
     bool curvesValid = false;
 
     int hovered = -1;
+    float slopeWheel = 0.0f; // wheel movement not yet turned into a slope step
+    int slopeWheelBand = -1;
     int dragging = -1;
     juce::Point<float> lastDragPosition;
     bool dragUsesGain = true;

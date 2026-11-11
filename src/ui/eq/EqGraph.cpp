@@ -135,7 +135,7 @@ juce::Rectangle<float> EqGraph::plotArea() const noexcept
 
 double EqGraph::getRangeDb() const
 {
-    return controller.getProcessor().isEqRangeWide() ? 30.0 : 12.0;
+    return (double) controller.getProcessor().getEqRangeDb();
 }
 
 float EqGraph::xForFrequency (double hz) const noexcept
@@ -249,9 +249,7 @@ void EqGraph::dragTo (juce::Point<float> position, bool fine)
     {
         dragValue = juce::jlimit (-dsp::eq::maxGainDb, dsp::eq::maxGainDb, gainForY (yForGain (dragValue) + delta.y));
         controller.setValueInGesture (dragging, EqField::gain, (float) dragValue);
-        // Beyond the ±12 dB scale the display widens by itself (§12).
-        if (std::abs (dragValue) > 12.0 && ! controller.getProcessor().isEqRangeWide())
-            controller.getProcessor().setEqRangeWide (true);
+        showGain (dragValue); // beyond the scale the display widens by itself (§12)
     }
     else
     {
@@ -272,13 +270,43 @@ void EqGraph::endDrag()
     dragging = -1;
 }
 
-void EqGraph::wheel (int index, float deltaY, bool fine)
+void EqGraph::showGain (double gainDb)
+{
+    auto& processor = controller.getProcessor();
+    if (std::abs (gainDb) > (double) processor.getEqRangeDb() + 1.0e-6)
+        processor.setEqRangeDb ((int) std::ceil (std::abs (gainDb) - 1.0e-6));
+}
+
+void EqGraph::wheel (int index, float deltaY, bool qInsteadOfSlope, bool fine)
 {
     if (index < 0 || std::abs (deltaY) < 1.0e-4f)
         return;
-    const auto steps = deltaY > 0.0f ? 1.0 : -1.0;
-    const auto q = clampQ (controller.getBand (index).settings.q * std::pow (fine ? 1.02 : 1.15, steps));
-    controller.setValue (index, EqField::q, (float) q);
+
+    const auto settings = controller.getBand (index).settings;
+
+    // Cuts: the wheel walks the slopes, one step per notch (a trackpad has to travel as far).
+    if (dsp::eq::usesSlope (settings.type) && ! qInsteadOfSlope)
+    {
+        if (index != slopeWheelBand || (slopeWheel > 0.0f) != (deltaY > 0.0f))
+            slopeWheel = 0.0f; // another band, or the direction changed
+        slopeWheelBand = index;
+        slopeWheel += deltaY;
+        if (std::abs (slopeWheel) + 1.0e-6f < slopeWheelStep)
+            return;
+        const auto step = slopeWheel > 0.0f ? 1 : -1;
+        slopeWheel = 0.0f;
+        const auto slope = juce::jlimit (0, (int) dsp::eq::slopesDbPerOctave.size() - 1, settings.slopeIndex + step);
+        if (slope != settings.slopeIndex)
+            controller.setValue (index, EqField::slope, (float) slope);
+    }
+    else
+    {
+        if (! dsp::eq::usesQ (settings.type, settings.slopeIndex))
+            return; // a 6 dB/oct cut has no Q
+        const auto steps = deltaY > 0.0f ? 1.0 : -1.0;
+        const auto q = clampQ (settings.q * std::pow (fine ? 1.02 : 1.15, steps));
+        controller.setValue (index, EqField::q, (float) q);
+    }
     curvesValid = false;
     repaint();
 }
@@ -326,7 +354,9 @@ bool EqGraph::applyTypedValues (int index, const juce::String& frequency, const 
     }
     if (gain.trim().isNotEmpty() && gain.containsAnyOf ("0123456789"))
     {
-        controller.setValue (index, EqField::gain, (float) juce::jlimit (-dsp::eq::maxGainDb, dsp::eq::maxGainDb, format::parseNumber (gain)));
+        const auto db = juce::jlimit (-dsp::eq::maxGainDb, dsp::eq::maxGainDb, format::parseNumber (gain));
+        controller.setValue (index, EqField::gain, (float) db);
+        showGain (db);
         any = true;
     }
     if (const auto value = format::parseNumber (q); q.trim().isNotEmpty() && value > 0.0)
@@ -452,7 +482,7 @@ void EqGraph::paint (juce::Graphics& g)
         for (const auto hz : { 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10000.0 })
             g.fillRect (juce::Rectangle<float> (std::round (xForFrequency (hz)), 0.0f, 1.0f, bounds.getHeight()));
         const auto range = getRangeDb();
-        const auto gridStep = range > 12.0 ? 10.0 : 6.0;
+        const auto gridStep = range > 12.0 ? 10.0 : (range > 6.0 ? 6.0 : 3.0);
         for (double db = gridStep; db <= range + 0.01; db += gridStep)
             for (const auto sign : { 1.0, -1.0 })
                 g.fillRect (juce::Rectangle<float> (0.0f, std::round (yForGain (sign * db)), bounds.getWidth(), 1.0f));
@@ -553,7 +583,7 @@ void EqGraph::paint (juce::Graphics& g)
         // Hint.
         g.setFont (theme.ui (11.0f));
         g.setColour (c.textMuted);
-        g.drawText (text ("Doble clic: nueva banda \xc2\xb7 Rueda: Q \xc2\xb7 Alt+clic: bypass de banda"),
+        g.drawText (text ("Doble clic: nueva banda \xc2\xb7 Rueda: Q (cortes: pendiente; Ctrl: Q) \xc2\xb7 Alt+clic: bypass"),
                     juce::Rectangle<float> (12.0f, 6.0f, bounds.getWidth() - 80.0f, 16.0f), juce::Justification::centredLeft, true);
     }
 
@@ -709,7 +739,7 @@ void EqGraph::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelD
     if (band < 0)
         band = controller.getSelectedBand();
     const auto delta = wheelDetails.isReversed ? -wheelDetails.deltaY : wheelDetails.deltaY;
-    wheel (band, delta, e.mods.isCtrlDown() || e.mods.isCommandDown());
+    wheel (band, delta, e.mods.isCtrlDown() || e.mods.isCommandDown(), e.mods.isShiftDown());
 }
 
 bool EqGraph::keyPressed (const juce::KeyPress& key)

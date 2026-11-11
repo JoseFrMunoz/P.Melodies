@@ -98,8 +98,14 @@ public:
     */
     EqAnalyzer getEqAnalyzer() const;
     void setEqAnalyzer (EqAnalyzer mode);
-    bool isEqRangeWide() const; // ±30 dB instead of ±12 dB
-    void setEqRangeWide (bool wide);
+
+    /** Gain scales of the EQ display, in dB (±6, ±12 or ±30). ±12 by default. */
+    static constexpr std::array<int, 3> eqRangesDb { 6, 12, 30 };
+    int getEqRangeDb() const;
+    /** Snaps to the smallest scale that holds rangeDb. */
+    void setEqRangeDb (int rangeDb);
+    /** Index of the current scale in eqRangesDb. */
+    int getEqRangeIndex() const;
 
     /**
         Band heard in solo in the EQ (-1 for none). Interface state, not a plugin parameter: it is

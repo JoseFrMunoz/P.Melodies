@@ -64,13 +64,23 @@ TEST_CASE ("EQ display: frequency and gain scales", "[ui][eq][phase1]")
     for (const auto hz : { 31.0, 400.0, 7777.0 })
         CHECK (g.frequencyForX (g.xForFrequency (hz)) == Catch::Approx (hz).epsilon (1.0e-4));
 
-    // ±12 dB between the design's margins; ±30 when wide.
+    // ±12 dB between the design's margins by default; also ±6 and ±30.
+    CHECK (ui.processor.getEqRangeDb() == 12);
     CHECK (g.yForGain (12.0) == Catch::Approx (17.0f));
     CHECK (g.yForGain (-12.0) == Catch::Approx (g.getHeight() - 17.0f));
     CHECK (g.yForGain (0.0) == Catch::Approx (g.getHeight() * 0.5f));
-    ui.processor.setEqRangeWide (true);
+    ui.processor.setEqRangeDb (30);
     CHECK (g.yForGain (30.0) == Catch::Approx (17.0f));
     CHECK (g.gainForY (g.yForGain (-21.5)) == Catch::Approx (-21.5));
+    ui.processor.setEqRangeDb (6);
+    CHECK (g.yForGain (6.0) == Catch::Approx (17.0f));
+    CHECK (g.yForGain (-6.0) == Catch::Approx (g.getHeight() - 17.0f));
+
+    // Any other value snaps to the smallest scale that holds it.
+    ui.processor.setEqRangeDb (7);
+    CHECK (ui.processor.getEqRangeDb() == 12);
+    ui.processor.setEqRangeDb (100);
+    CHECK (ui.processor.getEqRangeDb() == 30);
 }
 
 TEST_CASE ("EQ display: a double click creates the shape of its zone, with the gain of its height", "[ui][eq][phase1]")
@@ -150,12 +160,30 @@ TEST_CASE ("EQ display: dragging a point moves frequency and gain (or Q), Ctrl i
     CHECK (c.getBand (band).settings.gainDb == Catch::Approx (6.6).margin (0.06));
 
     // Beyond ±12 dB the scale widens by itself.
-    CHECK_FALSE (ui.processor.isEqRangeWide());
+    CHECK (ui.processor.getEqRangeDb() == 12);
     g.beginDrag (band, g.pointForBand (band));
     g.dragTo (g.pointForBand (band) + juce::Point<float> (0.0f, 2.0f * sixDb), false);
     g.endDrag();
     CHECK (c.getBand (band).settings.gainDb > 12.0);
-    CHECK (ui.processor.isEqRangeWide());
+    CHECK (ui.processor.getEqRangeDb() == 30);
+
+    // From ±6, a band dragged past 6 dB takes it to ±12, not straight to ±30; going back
+    // inside does not shrink it.
+    c.setValue (band, EqField::gain, 4.0f);
+    ui.processor.setEqRangeDb (6);
+    const auto oneDb = (g.yForGain (0.0) - g.yForGain (1.0));
+    g.beginDrag (band, g.pointForBand (band));
+    g.dragTo (g.pointForBand (band) - juce::Point<float> (0.0f, 3.0f * oneDb), false);
+    CHECK (c.getBand (band).settings.gainDb == Catch::Approx (7.0).margin (0.1));
+    CHECK (ui.processor.getEqRangeDb() == 12);
+    g.endDrag();
+    const auto at = g.pointForBand (band); // now on the ±12 scale
+    g.beginDrag (band, at);
+    g.dragTo (at + juce::Point<float> (0.0f, g.yForGain (0.0) - g.yForGain (4.0)), false);
+    g.endDrag();
+    CHECK (c.getBand (band).settings.gainDb == Catch::Approx (3.0).margin (0.1));
+    CHECK (ui.processor.getEqRangeDb() == 12);
+    ui.processor.setEqRangeDb (12);
 
     // Shapes without gain: the vertical drag sets the Q (up = narrower).
     const auto cut = c.createBand (FilterType::lowCut, 100.0, 0.0);
@@ -174,11 +202,15 @@ TEST_CASE ("EQ display: wheel sets the Q, Alt+click bypasses, Delete removes, me
     auto& c = ui.controller();
     const auto band = c.createBand (FilterType::bell, 400.0, -4.0);
 
-    // Wheel: Q up or down by steps, finer with Ctrl.
-    g.wheel (band, 0.2f, false);
+    // Wheel: Q up or down by steps, finer with Shift; Ctrl+wheel is the Q as well.
+    g.wheel (band, 0.2f, false, false);
     CHECK (c.getBand (band).settings.q == Catch::Approx (1.15).epsilon (0.002));
-    g.wheel (band, -0.2f, false);
-    g.wheel (band, -0.2f, true);
+    g.wheel (band, -0.2f, false, false);
+    g.wheel (band, -0.2f, false, true);
+    CHECK (c.getBand (band).settings.q == Catch::Approx (1.0 / 1.02).epsilon (0.002));
+    g.wheel (band, 0.2f, true, false);
+    CHECK (c.getBand (band).settings.q == Catch::Approx (1.15 / 1.02).epsilon (0.002));
+    g.wheel (band, -0.2f, true, false);
     CHECK (c.getBand (band).settings.q == Catch::Approx (1.0 / 1.02).epsilon (0.002));
 
     // Alt+click on the point toggles the bypass (through the real mouse handler).
@@ -220,6 +252,82 @@ TEST_CASE ("EQ display: wheel sets the Q, Alt+click bypasses, Delete removes, me
     CHECK (c.getSelectedBand() == other);
     g.mouseDown (mouseEvent (g, { g.xForFrequency (5000.0), 40.0f }, juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier)));
     CHECK (c.getSelectedBand() == -1);
+}
+
+TEST_CASE ("EQ display: in the cuts the wheel walks the slopes and Ctrl+wheel sets the Q", "[ui][eq][phase1]")
+{
+    EqUi ui;
+    auto& g = ui.graph();
+    auto& c = ui.controller();
+    const auto slopeOf = [&] (int b) { return dsp::eq::slopesDbPerOctave[(size_t) c.getBand (b).settings.slopeIndex]; };
+
+    const auto cut = c.createBand (FilterType::lowCut, 80.0, 0.0);
+    REQUIRE (slopeOf (cut) == 12);
+
+    // One notch of a mouse wheel is one step: 12 → 18 → 24 dB/oct. The Q does not move.
+    constexpr float notch = 0.234f; // what JUCE reports for one notch on Windows
+    g.wheel (cut, notch, false, false);
+    CHECK (slopeOf (cut) == 18);
+    g.wheel (cut, notch, false, false);
+    CHECK (slopeOf (cut) == 24);
+    CHECK (c.getBand (cut).settings.q == Catch::Approx (1.0));
+
+    // Small trackpad movements add up to one step.
+    for (int i = 0; i < 3; ++i)
+        g.wheel (cut, 0.05f, false, false);
+    CHECK (slopeOf (cut) == 24);
+    g.wheel (cut, 0.05f, false, false);
+    CHECK (slopeOf (cut) == 36);
+
+    // Down to 6 and up to 96, never beyond.
+    for (int i = 0; i < 12; ++i)
+        g.wheel (cut, -notch, false, false);
+    CHECK (slopeOf (cut) == 6);
+    for (int i = 0; i < 12; ++i)
+        g.wheel (cut, notch, false, false);
+    CHECK (slopeOf (cut) == 96);
+
+    // Ctrl+wheel: the Q (resonance); the slope stays.
+    g.wheel (cut, 0.2f, true, false);
+    CHECK (c.getBand (cut).settings.q == Catch::Approx (1.15).epsilon (0.002));
+    CHECK (slopeOf (cut) == 96);
+
+    // A 6 dB/oct cut has no Q: Ctrl+wheel leaves it alone.
+    c.setValue (cut, EqField::slope, 0.0f);
+    const auto q6 = c.getBand (cut).settings.q;
+    g.wheel (cut, 0.2f, true, false);
+    CHECK (c.getBand (cut).settings.q == Catch::Approx (q6));
+
+    // Through the real mouse handler, on a high cut: plain wheel = slope, Ctrl = Q.
+    const auto high = c.createBand (FilterType::highCut, 12000.0, 0.0);
+    juce::MouseWheelDetails details {};
+    details.deltaY = notch;
+    const auto at = g.pointForBand (high);
+    g.mouseWheelMove (mouseEvent (g, at, juce::ModifierKeys()), details);
+    CHECK (slopeOf (high) == 18);
+    g.mouseWheelMove (mouseEvent (g, at, juce::ModifierKeys (juce::ModifierKeys::ctrlModifier)), details);
+    CHECK (slopeOf (high) == 18);
+    CHECK (c.getBand (high).settings.q == Catch::Approx (1.15).epsilon (0.002));
+}
+
+TEST_CASE ("EQ display: projects saved with the two-way scale keep it", "[ui][eq][state][phase1]")
+{
+    // Earlier phase 1 builds saved a flag: true for ±30, false for ±12.
+    for (const auto& [flag, expected] : { std::pair { true, 30 }, std::pair { false, 12 } })
+    {
+        PMelodiesProcessor original;
+        juce::MemoryBlock saved;
+        original.getStateInformation (saved);
+        auto xml = juce::AudioProcessor::getXmlFromBinary (saved.getData(), (int) saved.getSize());
+        REQUIRE (xml != nullptr);
+        xml->setAttribute (PMelodiesProcessor::eqRangeProperty.toString(), flag ? "1" : "0");
+        juce::MemoryBlock old;
+        juce::AudioProcessor::copyXmlToBinary (*xml, old);
+
+        PMelodiesProcessor restored;
+        restored.setStateInformation (old.getData(), (int) old.getSize());
+        CHECK (restored.getEqRangeDb() == expected);
+    }
 }
 
 TEST_CASE ("EQ band editor follows the selected band", "[ui][eq][phase1]")
@@ -294,8 +402,10 @@ TEST_CASE ("EQ header: character, analyser and scale; chain row shows the band c
     page.getAnalyserSelector().setSelectedIndex (2);
     CHECK (ui.processor.getEngine().getEqAnalyzer().getPoint() == dsp::AnalyzerTap::Point::off);
 
-    page.getRangeSelector().setSelectedIndex (1);
-    CHECK (ui.processor.isEqRangeWide());
+    page.getRangeSelector().setSelectedIndex (0);
+    CHECK (ui.processor.getEqRangeDb() == 6);
+    page.getRangeSelector().setSelectedIndex (2);
+    CHECK (ui.processor.getEqRangeDb() == 30);
 
     // Saved with the project.
     juce::MemoryBlock saved;
@@ -303,7 +413,7 @@ TEST_CASE ("EQ header: character, analyser and scale; chain row shows the band c
     PMelodiesProcessor restored;
     restored.setStateInformation (saved.getData(), (int) saved.getSize());
     CHECK (restored.getEqAnalyzer() == PMelodiesProcessor::EqAnalyzer::off);
-    CHECK (restored.isEqRangeWide());
+    CHECK (restored.getEqRangeDb() == 30);
     CHECK (restored.getEngine().getEqAnalyzer().getPoint() == dsp::AnalyzerTap::Point::off);
 
     // Chain row.
