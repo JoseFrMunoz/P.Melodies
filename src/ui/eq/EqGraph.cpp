@@ -119,11 +119,12 @@ private:
 };
 
 //==============================================================================
-EqGraph::EqGraph (EqController& c) : controller (c)
+EqGraph::EqGraph (EqController& c) : controller (c), popup (std::make_unique<EqBandPopup> (*this, c))
 {
     setTitle ("EQ");
     setWantsKeyboardFocus (true);
     setMouseClickGrabsKeyboardFocus (true);
+    addChildComponent (*popup);
 }
 
 EqGraph::~EqGraph() = default;
@@ -211,8 +212,7 @@ int EqGraph::createBandAt (juce::Point<float> position)
     const auto type = EqController::typeForNewBand (hz, bottomStrip);
     const auto gain = juce::jlimit (-dsp::eq::maxGainDb, dsp::eq::maxGainDb, std::round (gainForY (position.y) * 10.0) / 10.0);
     const auto band = controller.createBand (type, hz, gain);
-    curvesValid = false;
-    repaint();
+    bandsChanged();
     return band;
 }
 
@@ -257,8 +257,7 @@ void EqGraph::dragTo (juce::Point<float> position, bool fine)
         dragValue = clampQ (dragValue * std::pow (2.0, -delta.y / 40.0));
         controller.setValueInGesture (dragging, EqField::q, (float) dragValue);
     }
-    curvesValid = false;
-    repaint();
+    bandsChanged(); // the mini panel follows the point
 }
 
 void EqGraph::endDrag()
@@ -307,8 +306,47 @@ void EqGraph::wheel (int index, float deltaY, bool qInsteadOfSlope, bool fine)
         const auto q = clampQ (settings.q * std::pow (fine ? 1.02 : 1.15, steps));
         controller.setValue (index, EqField::q, (float) q);
     }
+    bandsChanged();
+}
+
+void EqGraph::bandsChanged()
+{
     curvesValid = false;
+    updatePopup();
     repaint();
+}
+
+void EqGraph::updatePopup()
+{
+    const auto selected = controller.getSelectedBand();
+    popup->update (selected, selected >= 0 ? pointForBand (selected) : juce::Point<float>(), getLocalBounds());
+}
+
+void EqGraph::beginSolo (int index)
+{
+    if (index < 0 || ! controller.getBand (index).active)
+        return;
+    if (soloBand < 0)
+        soloPrevious = controller.getSoloBand();
+    soloBand = index;
+    controller.setSoloBand (index);
+    bandsChanged();
+}
+
+void EqGraph::soloDragTo (juce::Point<float>, bool)
+{
+    // Moving the band while soloing comes in the next step of P.P.'s review.
+}
+
+void EqGraph::endSolo()
+{
+    if (soloBand < 0)
+        return;
+    // Back to what was soloed before (the editor's Solo button may have latched this band).
+    controller.setSoloBand (soloPrevious);
+    soloBand = -1;
+    soloPrevious = -1;
+    bandsChanged();
 }
 
 juce::PopupMenu EqGraph::buildBandMenu (int index) const
@@ -338,8 +376,7 @@ void EqGraph::handleMenuResult (int index, int result)
         controller.deleteBand (index);
     else if (result >= menuShapeBase && result < menuShapeBase + dsp::eq::numFilterTypes)
         controller.setType (index, (FilterType) (result - menuShapeBase));
-    curvesValid = false;
-    repaint();
+    bandsChanged();
 }
 
 bool EqGraph::applyTypedValues (int index, const juce::String& frequency, const juce::String& gain, const juce::String& q)
@@ -413,6 +450,7 @@ void EqGraph::refresh()
     if (controller.getSelectedBand() >= 0 && ! controller.getBand (controller.getSelectedBand()).active)
         controller.setSelectedBand (-1);
 
+    updatePopup(); // follows automation and changes from the editor
     repaint();
 }
 
@@ -454,6 +492,7 @@ void EqGraph::updateCurves()
 void EqGraph::resized()
 {
     curvesValid = false;
+    updatePopup();
 }
 
 //==============================================================================
@@ -634,25 +673,7 @@ void EqGraph::paint (juce::Graphics& g)
             drawPoint (b);
     if (selected >= 0)
     {
-        drawPoint (selected);
-
-        // Floating label next to the selected point.
-        const auto p = pointForBand (selected);
-        const auto label = labelText (selected);
-        const auto font = theme.mono (10.5f, Weight::regular);
-        const auto width = textWidth (font, label) + 20.0f;
-        auto box = juce::Rectangle<float> (width, 22.0f).withPosition (p.x + 18.0f, p.y + 12.0f);
-        if (box.getRight() > bounds.getRight() - 4.0f)
-            box.setX (p.x - 18.0f - width);
-        if (box.getBottom() > bounds.getBottom() - 4.0f)
-            box.setY (p.y - 34.0f);
-        g.setColour (c.elevated);
-        g.fillRoundedRectangle (box, 5.0f);
-        g.setColour (c.border);
-        g.drawRoundedRectangle (box.reduced (0.5f), 5.0f, 1.0f);
-        g.setColour (c.text);
-        g.setFont (font);
-        g.drawText (label, box.withTrimmedLeft (10.0f), juce::Justification::centredLeft, false);
+        drawPoint (selected); // its values are in the mini panel (EqBandPopup)
     }
 
     g.setColour (c.borderSubtle);
@@ -698,7 +719,8 @@ void EqGraph::mouseDown (const juce::MouseEvent& e)
 
     if (band < 0)
     {
-        controller.setSelectedBand (-1); // a click on the background deselects
+        controller.setSelectedBand (-1); // a click on the background deselects (and closes the mini panel)
+        updatePopup();
         repaint();
         return;
     }
@@ -707,8 +729,7 @@ void EqGraph::mouseDown (const juce::MouseEvent& e)
     {
         controller.setSelectedBand (band);
         controller.setBypassed (band, ! controller.getBand (band).bypassed);
-        curvesValid = false;
-        repaint();
+        bandsChanged();
         return;
     }
 
@@ -750,9 +771,23 @@ bool EqGraph::keyPressed (const juce::KeyPress& key)
     if ((key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey) && controller.getSelectedBand() >= 0)
     {
         controller.deleteBand (controller.getSelectedBand());
-        curvesValid = false;
-        repaint();
+        bandsChanged();
         return true;
+    }
+    if (key == juce::KeyPress::escapeKey)
+    {
+        // First the row of shapes, then the mini panel (deselecting the band).
+        if (popup->isShapeRowOpen())
+        {
+            popup->setShapeRowOpen (false);
+            return true;
+        }
+        if (controller.getSelectedBand() >= 0)
+        {
+            controller.setSelectedBand (-1);
+            bandsChanged();
+            return true;
+        }
     }
     return false;
 }

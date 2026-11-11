@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "ui/eq/EqBandPopup.h"
 #include "ui/eq/EqController.h"
 #include "ui/eq/SpectrumAnalyser.h"
 
@@ -30,6 +31,8 @@ namespace pm::ui
       (6 → 96 dB/oct, one step per notch). Ctrl+wheel: always the Q. Shift: finer Q steps.
     - Alt+click a point: bypass. Right click: menu with shape, bypass and delete.
     - Double click a point: type its frequency, gain and Q. Delete (Supr): deletes the band.
+    - Clicking a point opens its mini panel (EqBandPopup): bypass, shape, solo while held,
+      delete and values. A click on the background or Esc closes it (and deselects).
 */
 class EqGraph final : public juce::Component
 {
@@ -52,7 +55,7 @@ public:
     juce::Point<float> pointForBand (int index) const;
     int bandAt (juce::Point<float> position) const;
 
-    /** "400 Hz · −4,0 dB" (or "· Q 2,50" for shapes without gain). */
+    /** "400 Hz · −4,0 dB" (or "· Q 2,50" for shapes without gain): the point's accessible description. */
     juce::String labelText (int index) const;
 
     // Actions, public so tests can run them without synthesising mouse events.
@@ -84,6 +87,21 @@ public:
 
     SpectrumAnalyser& getAnalyser() noexcept { return analyser; }
 
+    /** Mini panel of the selected band (P.P.'s review of phase 1, §12). */
+    EqBandPopup& getPopup() noexcept { return *popup; }
+
+    /** Places the mini panel on the selected band, or hides it. */
+    void updatePopup();
+
+    /** A band changed from the mini panel or the editor: redraw the curves and the panel. */
+    void bandsChanged();
+
+    // Solo from the mini panel's headphones: heard while held (dragging is phase 1 review, step 4).
+    void beginSolo (int index);
+    void soloDragTo (juce::Point<float> offset, bool changeQ);
+    void endSolo();
+    bool isSoloHeld() const noexcept { return soloBand >= 0; }
+
     // Component
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -114,6 +132,9 @@ private:
     bool curvesValid = false;
 
     int hovered = -1;
+    std::unique_ptr<EqBandPopup> popup;
+    int soloBand = -1;      // held from the mini panel
+    int soloPrevious = -1;  // solo before it was held (the editor's Solo button latches)
     float slopeWheel = 0.0f; // wheel movement not yet turned into a slope step
     int slopeWheelBand = -1;
     int dragging = -1;

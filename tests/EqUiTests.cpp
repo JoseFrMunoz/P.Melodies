@@ -9,6 +9,7 @@
 #include "TestHelpers.h"
 
 #include "PluginEditor.h"
+#include "core/ValueFormat.h"
 #include "ui/eq/EqPanel.h"
 
 #include <catch2/catch_approx.hpp>
@@ -379,6 +380,193 @@ TEST_CASE ("EQ: every band has its own colour, close to the EQ gold", "[ui][eq][
         CHECK (ui.bandPanel().getKnob (EqField::frequency)->getAccentColour() == theme.eqBandColour (band));
         CHECK (ui.bandPanel().getShapeSelector().getAccentColour() == theme.eqBandColour (band));
     }
+}
+
+TEST_CASE ("Notes are named and typed as in FL Studio (A5 = 440 Hz)", "[format][eq][phase1]")
+{
+    const auto minus = format::unicodeMinus();
+    const auto hzOf = [] (int midi, int cents = 0) { return 440.0 * std::pow (2.0, (midi - 69) / 12.0 + cents / 1200.0); };
+
+    CHECK (format::note (440.0) == "A5 +00");
+    CHECK (format::note (hzOf (60)) == "C5 +00"); // middle C, as in FL Studio's piano roll
+    CHECK (format::note (400.0) == "G5 +35");
+    CHECK (format::note (130.0) == "C4 " + minus + "11");
+    CHECK (format::note (27.5) == "A1 +00");
+    CHECK (format::note (0.0).isEmpty());
+
+    CHECK (format::parseNote ("A5") == Catch::Approx (440.0));
+    CHECK (format::parseNote ("a5") == Catch::Approx (440.0));
+    CHECK (format::parseNote ("C#3+13") == Catch::Approx (hzOf (37, 13)));
+    CHECK (format::parseNote ("Bb4") == Catch::Approx (hzOf (58)));
+    CHECK (format::parseNote ("A5 " + minus + "20") == Catch::Approx (hzOf (69, -20)));
+    CHECK (format::parseNote ("C0") == Catch::Approx (hzOf (0)));
+    for (const auto* notANote : { "2k", "400", "H5", "A", "A5x", "A5+", "#5", "" })
+    {
+        INFO (notANote);
+        CHECK (format::parseNote (notANote) == 0.0);
+    }
+
+    // Every note name reads back to its frequency.
+    for (int midi = 0; midi < 136; ++midi)
+    {
+        const auto name = format::note (hzOf (midi)).upToFirstOccurrenceOf (" ", false, false);
+        INFO (name);
+        CHECK (format::parseNote (name) == Catch::Approx (hzOf (midi)));
+    }
+
+    // The band's value editor accepts notes as well as numbers.
+    CHECK (format::parseFrequency ("A5") == Catch::Approx (440.0));
+    CHECK (format::parseFrequency ("2,5k") == Catch::Approx (2500.0));
+    CHECK (format::parseFrequency ("400 Hz") == Catch::Approx (400.0));
+    EqUi ui;
+    const auto band = ui.controller().createBand (FilterType::bell, 1000.0, 0.0);
+    CHECK (ui.graph().applyTypedValues (band, "E2+50", "", ""));
+    CHECK (ui.controller().getBand (band).settings.frequency == Catch::Approx (hzOf (28, 50)).epsilon (2.0e-4));
+}
+
+TEST_CASE ("EQ mini panel: opens on the selected band with its values, above the point, and follows it", "[ui][eq][popup][phase1]")
+{
+    EqUi ui;
+    auto& g = ui.graph();
+    auto& c = ui.controller();
+    auto& popup = g.getPopup();
+    const auto left = juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier);
+
+    CHECK_FALSE (popup.isVisible());
+    const auto band = c.createBand (FilterType::bell, 400.0, -4.0); // creating selects it
+    REQUIRE (c.getSelectedBand() == band);
+    CHECK (popup.isVisible());
+    CHECK (popup.getBand() == band);
+
+    auto p = g.pointForBand (band);
+    auto card = popup.getCardBoundsInParent();
+    CHECK (popup.isAbove());
+    CHECK ((float) card.getBottom() < p.y - 10.0f);
+    CHECK (std::abs ((float) card.getCentreX() - p.x) <= 1.0f);
+    CHECK (g.getLocalBounds().contains (card));
+
+    const auto values = popup.getValueTexts();
+    CHECK (values[0] == "400 Hz");
+    CHECK (values[1] == "G5 +35");
+    CHECK (values[2] == format::unicodeMinus() + "4,0 dB");
+    CHECK (values[3] == "Q 1,00");
+
+    // It follows the point while it is dragged, and changes from outside (automation).
+    g.beginDrag (band, p);
+    g.dragTo (p + juce::Point<float> (100.0f, 0.0f), false);
+    CHECK (std::abs ((float) popup.getCardBoundsInParent().getCentreX() - g.pointForBand (band).x) <= 1.0f);
+    g.endDrag();
+    c.setValue (band, EqField::frequency, 2000.0f);
+    g.refresh();
+    CHECK (popup.getValueTexts()[0] == "2,00 kHz");
+    CHECK (std::abs ((float) popup.getCardBoundsInParent().getCentreX() - g.pointForBand (band).x) <= 1.0f);
+
+    // Near the top there is no room: it goes below the point, sliding there.
+    c.setValue (band, EqField::gain, 11.5f);
+    g.refresh();
+    CHECK_FALSE (popup.isAbove());
+    CHECK (popup.isAnimating());
+    for (int frame = 0; frame < 60 && popup.isAnimating(); ++frame)
+        popup.advanceAnimation (1.0 / 60.0);
+    CHECK_FALSE (popup.isAnimating());
+    p = g.pointForBand (band);
+    CHECK ((float) popup.getCardBoundsInParent().getY() > p.y + 10.0f);
+
+    // At the edges it stays inside the display.
+    for (const auto hz : { 25.0f, 19000.0f })
+    {
+        c.setValue (band, EqField::frequency, hz);
+        g.refresh();
+        CHECK (g.getLocalBounds().contains (popup.getCardBoundsInParent()));
+    }
+
+    // Cuts show their slope with the wheel hint; a 6 dB/oct cut has no Q.
+    const auto cut = c.createBand (FilterType::lowCut, 60.0, 0.0);
+    REQUIRE (popup.getBand() == cut);
+    CHECK (popup.getValueTexts()[2] == "12 dB/oct");
+    CHECK (popup.getValueTexts()[3] == "Q 1,00");
+    c.setValue (cut, EqField::slope, 0.0f);
+    g.refresh();
+    CHECK (popup.getValueTexts()[3] == juce::String (juce::CharPointer_UTF8 ("Q \xe2\x80\x94")));
+
+    // A click on the background closes it.
+    g.mouseDown (mouseEvent (g, { g.xForFrequency (300.0), g.yForGain (-9.0) }, left));
+    CHECK_FALSE (popup.isVisible());
+    CHECK (c.getSelectedBand() == -1);
+}
+
+TEST_CASE ("EQ mini panel: bypass, shape row, solo while held, delete and Esc", "[ui][eq][popup][phase1]")
+{
+    EqUi ui;
+    auto& g = ui.graph();
+    auto& c = ui.controller();
+    auto& popup = g.getPopup();
+    const auto left = juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier);
+    const auto band = c.createBand (FilterType::bell, 1000.0, 3.0);
+    REQUIRE (popup.isVisible());
+
+    // No control of the panel takes the keyboard: the space bar keeps reaching FL Studio.
+    for (auto* comp : { (juce::Component*) &popup.getBypassButton(), (juce::Component*) &popup.getShapeButton(),
+                        &popup.getSoloButton(), (juce::Component*) &popup.getDeleteButton(), (juce::Component*) &popup.getShapeRow() })
+        CHECK_FALSE (comp->getWantsKeyboardFocus());
+
+    // Bypass, both ways.
+    popup.getBypassButton().onClick();
+    CHECK (c.getBand (band).bypassed);
+    popup.getBypassButton().onClick();
+    CHECK_FALSE (c.getBand (band).bypassed);
+
+    // Shape: the row opens with the current shape lit; a click changes it and closes the row.
+    popup.getShapeButton().onClick();
+    REQUIRE (popup.isShapeRowOpen());
+    auto& row = popup.getShapeRow();
+    CHECK (row.isVisible());
+    CHECK (row.getSelected() == (int) FilterType::bell);
+    const auto notchCentre = juce::Point<float> (2.0f + 5.0f * (ui::ShapeSelector::buttonSize + 2.0f) + 14.0f, 16.0f);
+    row.mouseDown (mouseEvent (row, notchCentre, left));
+    CHECK (c.getBand (band).settings.type == FilterType::notch);
+    CHECK_FALSE (popup.isShapeRowOpen());
+
+    // Esc: first the row, then the panel; with nothing open it goes on to the host.
+    popup.getShapeButton().onClick();
+    CHECK (g.keyPressed (juce::KeyPress (juce::KeyPress::escapeKey)));
+    CHECK_FALSE (popup.isShapeRowOpen());
+    CHECK (popup.isVisible());
+    CHECK (g.keyPressed (juce::KeyPress (juce::KeyPress::escapeKey)));
+    CHECK_FALSE (popup.isVisible());
+    CHECK_FALSE (g.keyPressed (juce::KeyPress (juce::KeyPress::escapeKey)));
+    CHECK_FALSE (g.keyPressed (juce::KeyPress (juce::KeyPress::spaceKey)));
+
+    // Solo while the headphones are held; on release, back to what was soloed before.
+    c.setSelectedBand (band);
+    auto& solo = popup.getSoloButton();
+    const auto press = [&] { solo.mouseDown (mouseEvent (solo, { 12.0f, 12.0f }, left)); };
+    const auto release = [&] { solo.mouseUp (mouseEvent (solo, { 12.0f, 12.0f }, juce::ModifierKeys())); };
+    press();
+    CHECK (c.getSoloBand() == band);
+    CHECK (g.isSoloHeld());
+    CHECK (ui.processor.getEqSoloBand() == band);
+    release();
+    CHECK (c.getSoloBand() == -1);
+    CHECK_FALSE (g.isSoloHeld());
+
+    const auto other = c.createBand (FilterType::bell, 200.0, 2.0);
+    c.setSoloBand (other); // latched with the editor's Solo button
+    c.setSelectedBand (band);
+    press();
+    CHECK (c.getSoloBand() == band);
+    release();
+    CHECK (c.getSoloBand() == other);
+    c.setSoloBand (band);
+    press();
+    release();
+    CHECK (c.getSoloBand() == band); // it was latched on this band: it stays
+    c.setSoloBand (-1);
+
+    // Delete.
+    popup.getDeleteButton().onClick();
+    CHECK_FALSE (c.getBand (band).active);
+    CHECK_FALSE (popup.isVisible());
 }
 
 TEST_CASE ("EQ band editor follows the selected band", "[ui][eq][phase1]")

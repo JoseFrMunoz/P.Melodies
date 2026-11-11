@@ -32,7 +32,8 @@ enum class Icon
     shapeHighCut,
     shapeNotch,
     shapeBandPass,
-    shapeTilt
+    shapeTilt,
+    headphones // solo of an EQ band
 };
 
 /** Icon of an EQ band shape (FilterType index 0-7). */

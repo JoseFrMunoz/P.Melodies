@@ -11,7 +11,7 @@ namespace pm::ui::icons
 
 namespace
 {
-constexpr int numIcons = static_cast<int> (Icon::shapeTilt) + 1;
+constexpr int numIcons = static_cast<int> (Icon::headphones) + 1;
 
 const char* svgOutline (Icon icon)
 {
@@ -43,6 +43,8 @@ const char* svgOutline (Icon icon)
         case Icon::shapeNotch:     return "M1 5h5l2 9 2-9h5";
         case Icon::shapeBandPass:  return "M1 14C5 14 6 5 8 5s3 9 7 9";
         case Icon::shapeTilt:      return "M1 11 15 5";
+        case Icon::headphones:
+            return "M2.5 11V8.5a5.5 5.5 0 0 1 11 0V11 M2.5 10h2.2v4H3.2a.7.7 0 0 1-.7-.7z M13.5 10h-2.2v4h1.5a.7.7 0 0 0 .7-.7z";
     }
     return "";
 }

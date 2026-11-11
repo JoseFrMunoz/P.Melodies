@@ -43,6 +43,7 @@ EqPanel::EqPanel (PMelodiesProcessor& processor)
     controller.onSelectionChanged = [this]
     {
         bandPanel.refresh();
+        graph.updatePopup();
         graph.repaint();
     };
 
