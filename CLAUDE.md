@@ -50,7 +50,7 @@ Acordados durante la fase 0. Fechas y detalle en `docs/ESPECIFICACION.md` §12.
 
 - **Manuales de los plugins de referencia:** `docs/referencias/README.md`. Al empezar la fase de un módulo, lee su manual (solo comportamiento: regla 8).
 - **Red en Claude Code:** el entorno *P.Melodies* permite fabfilter.com. Para leer los manuales de FL Studio (fase 4) hará falta permitir image-line.com.
-- **Estado de las fases:** consulta `docs/ESPECIFICACION.md` §12 (decisiones aprobadas), §13 (pendientes sin fase asignada) y el historial de ramas `phase/*`.
+- **Estado de las fases:** consulta `docs/ESPECIFICACION.md` §12 (decisiones aprobadas), §13 (pendientes sin fase asignada) y el historial de ramas `phase/*`. Los módulos futuros (después de la v1) están en `docs/PENDIENTES.md`.
 - **Configurar y compilar (Linux):**
   `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build`
 - **Tests:** `ctest --test-dir build --output-on-failure`

@@ -50,7 +50,7 @@ Los manuales de todas las referencias están en [`docs/referencias/README.md`](r
 ### 3.1 Núcleo
 - `AudioProcessorValueTreeState` para todos los parámetros. Todos son **automatizables** desde FL Studio, con nombres legibles y unidades.
 - Interfaz común `Module` con `prepare(spec)`, `reset()`, `process(block, sidechain)`, `getLatencySamples()` y `setBypassed(bool)`. Los cuatro módulos la implementan.
-- **Cadena reordenable:** el orden se guarda en un único parámetro entero que codifica la permutación de los 4 módulos (24 combinaciones), así se guarda con el proyecto y los presets. Orden por defecto: EQ → Compresor → Saturación → Distorsión.
+- **Cadena reordenable:** el orden se guarda en el estado del plugin (por ejemplo, un parámetro que codifica la permutación: 24 combinaciones con los 4 módulos actuales), así se guarda con el proyecto y los presets. El diseño debe poder ampliarse a más módulos en el futuro sin romper presets ni proyectos guardados. Orden por defecto: EQ → Compresor → Saturación → Distorsión.
 - **Cambio de orden sin clics:** al reordenar, haz un fundido cruzado de 20 ms entre la cadena antigua y la nueva, procesando ambas durante el fundido.
 - **Latencia:** reporta a FL Studio una latencia **constante**, la máxima posible según los ajustes que la generan (lookahead y oversampling), y compensa internamente con retardos para que no cambie al mover parámetros ni al reordenar. La ruta *dry* del mix global debe ir alineada.
 - **Oversampling:** usa `juce::dsp::Oversampling`. Cada módulo que lo necesite tiene su selector. Ajuste global de calidad: un factor *al reproducir* y otro *al exportar* (detectado con `isNonRealtime()`), que se aplica como mínimo.
@@ -252,6 +252,8 @@ Lo que no está en la fase correspondiente no se hace: las peticiones de §13 es
 - **Mix global «no funciona»:** funciona, pero en la fase 0 ningún módulo procesa, así que la señal procesada y la original son la misma y cualquier mezcla suena igual. Un test nuevo sigue todo el camino (arrastrar el knob con el ratón → parámetro → mezcla en el audio). Se oirá en cuanto el EQ cambie el sonido.
 - **Reordenado en vivo y fluido** en el panel de la cadena (§8.1).
 
+**Pendiente antes de fusionar a `main`:** el texto de §3.1 y §10 que llegó desde `main` (2026-11-06) pide que la cadena admita más de 4 módulos sin romper presets ni proyectos. En el código, el número de módulos está en una sola constante (`numModules`), pero el orden se guarda en un parámetro de 24 valores, que solo vale para 4 módulos. Falta que P.P. elija cómo se guarda el orden.
+
 Todo lo que comparten los módulos. Si falla aquí, fallaría en los cuatro.
 - Repo, CMake, JUCE fijado, `LICENSE` AGPLv3, `CLAUDE.md`, `docs/ESPECIFICACION.md`, README inicial y `.gitignore`.
 - **CI en GitHub Actions:**
@@ -368,6 +370,8 @@ Quedan para la v2:
 
 Diseña el código para que estas mejoras se puedan añadir sin reescribir lo existente.
 
+En [`docs/PENDIENTES.md`](PENDIENTES.md) hay más ideas de módulos para el futuro (cristalizador, delay y reverb). **No los implementes:** son solo una lista de pendientes. Pero ten en cuenta que la cadena tendrá que admitir más de 4 módulos, así que no fijes el número de módulos en la arquitectura ni en el parámetro que guarda el orden.
+
 ---
 
 ## 11. Cómo empezar
@@ -414,6 +418,8 @@ Decisiones tomadas con P.P. Tienen el mismo valor que el resto de la especificac
 ## 13. Pendientes
 
 Peticiones de P.P. anotadas para más adelante. **No se implementan** hasta que P.P. diga en qué fase van. Las ya asignadas pasan a §12 y §9.
+
+Los **módulos nuevos para después de la v1** (cristalizador, delay y reverb) están en [`docs/PENDIENTES.md`](PENDIENTES.md).
 
 | Fecha | Petición | Notas |
 |---|---|---|
