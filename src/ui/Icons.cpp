@@ -11,7 +11,7 @@ namespace pm::ui::icons
 
 namespace
 {
-constexpr int numIcons = static_cast<int> (Icon::close) + 1;
+constexpr int numIcons = static_cast<int> (Icon::shapeTilt) + 1;
 
 const char* svgOutline (Icon icon)
 {
@@ -34,6 +34,15 @@ const char* svgOutline (Icon icon)
         case Icon::power:        return "M8 2v6 M4.6 4.2a5 5 0 1 0 6.8 0";
         case Icon::compare:      return "M2 8h3 M11 8h3 M5 5v6 M11 5v6 M8 3v10";
         case Icon::close:        return "M4 4l8 8 M12 4l-8 8";
+        case Icon::trash:        return "M3 4.5h10 M6.5 4.5V3h3v1.5 M4.5 4.5l.7 9h5.6l.7-9";
+        case Icon::shapeBell:      return "M1 12C5 12 6 4 8 4s3 8 7 8";
+        case Icon::shapeLowShelf:  return "M1 5h4c3 0 3 6 6 6h4";
+        case Icon::shapeHighShelf: return "M1 11h4c3 0 3-6 6-6h4";
+        case Icon::shapeLowCut:    return "M2 14C4 6 6 5 9 5h6";
+        case Icon::shapeHighCut:   return "M1 5h6c3 0 5 1 7 9";
+        case Icon::shapeNotch:     return "M1 5h5l2 9 2-9h5";
+        case Icon::shapeBandPass:  return "M1 14C5 14 6 5 8 5s3 9 7 9";
+        case Icon::shapeTilt:      return "M1 11 15 5";
     }
     return "";
 }

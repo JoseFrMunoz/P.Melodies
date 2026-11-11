@@ -15,6 +15,8 @@
 #include "ui/components/SegmentedSelector.h"
 #include "ui/components/ToggleSwitch.h"
 #include "ui/theme/Theme.h"
+#include "ui/eq/EqPanel.h"
+#include "ui/layout/SettingsPanel.h"
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -321,8 +323,15 @@ TEST_CASE ("Settings: quality selectors and clipper are bound to the parameters"
     pm.showSettings (true);
     REQUIRE (pm.isShowingSettings());
 
+    // The selectors of the settings panel (the EQ page has its own).
+    juce::Component* overlay = nullptr;
+    for (auto* child : pm.getChildren())
+        if (dynamic_cast<ui::SettingsOverlay*> (child) != nullptr)
+            overlay = child;
+    REQUIRE (overlay != nullptr);
+
     std::vector<ui::SegmentedSelector*> selectors;
-    forEachDescendant (pm, [&] (juce::Component& c)
+    forEachDescendant (*overlay, [&] (juce::Component& c)
                        {
                            if (auto* s = dynamic_cast<ui::SegmentedSelector*> (&c); s != nullptr && s->isEnabled())
                                selectors.push_back (s);
@@ -477,6 +486,25 @@ TEST_CASE ("Snapshot of the interface for visual review", "[.snapshot]")
     pm.getFooter().refresh (1.0 / 30.0);
 
     savePng (pm.createComponentSnapshot (pm.getLocalBounds(), true, 2.0f), "01-main");
+
+    // EQ page with bands, as in design 01, with a spectrum from real audio.
+    {
+        auto& eqPanel = pm.getModulePanel().getEqPanel();
+        auto& controller = eqPanel.getController();
+        controller.createBand (dsp::eq::FilterType::lowCut, 32.0, 0.0);
+        controller.createBand (dsp::eq::FilterType::bell, 110.0, 4.5);
+        const auto bell = controller.createBand (dsp::eq::FilterType::bell, 400.0, -4.0);
+        controller.setValue (bell, param::EqField::q, 2.5f);
+        const auto bypassed = controller.createBand (dsp::eq::FilterType::bell, 2000.0, 0.0);
+        controller.setBypassed (bypassed, true);
+        controller.createBand (dsp::eq::FilterType::highShelf, 8000.0, 3.0);
+        controller.setSelectedBand (bell);
+        runProcessor (processor, makeNoise (2, 48000, 0.2f), blockSizes (48000, 512));
+        eqPanel.refresh();
+        pm.getFooter().refresh (1.0 / 30.0);
+        pm.getChainPanel().refreshStatus();
+        savePng (pm.createComponentSnapshot (pm.getLocalBounds(), true, 2.0f), "01b-eq");
+    }
 
     // Component gallery: standard knobs with module colours, selector, dropdown, switch.
     {

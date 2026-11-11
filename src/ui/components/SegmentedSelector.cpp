@@ -24,6 +24,7 @@ SegmentedSelector::SegmentedSelector (juce::StringArray optionTexts) : options (
 
 void SegmentedSelector::attachTo (juce::RangedAudioParameter& parameter)
 {
+    attachment.reset(); // the old one first, so it never sees the new state (see PillButton::attachTo)
     attachment = std::make_unique<juce::ParameterAttachment> (
         parameter, [this] (float value) { setSelectedIndex (juce::roundToInt (value), juce::dontSendNotification); }, nullptr);
     if (getTitle().isEmpty())

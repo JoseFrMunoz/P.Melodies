@@ -24,6 +24,7 @@ PMelodiesEditor::PMelodiesEditor (PMelodiesProcessor& p)
     : juce::AudioProcessorEditor (p),
       processor (p),
       chainPanel (*p.getState().getParameter (param::id::chainOrder), enabledParameters (p)),
+      modulePanel (p),
       footer (p)
 {
     setLookAndFeel (&lookAndFeel);
@@ -32,6 +33,13 @@ PMelodiesEditor::PMelodiesEditor (PMelodiesProcessor& p)
     header.onSettingsClicked = [this] { showSettings (! isShowingSettings()); };
     footer.onQualityClicked = [this] { showSettings (true); };
     chainPanel.onModuleSelected = [this] (ModuleId id) { selectModule (id); };
+    chainPanel.statusText = [this] (ModuleId id) -> juce::String
+    {
+        if (id != ModuleId::eq)
+            return "Activo";
+        const auto bands = modulePanel.getEqPanel().getController().getNumActiveBands();
+        return bands == 0 ? juce::String ("Sin bandas") : juce::String (bands) + (bands == 1 ? " banda" : " bandas");
+    };
 
     addAndMakeVisible (header);
     addAndMakeVisible (chainPanel);
@@ -126,6 +134,8 @@ void PMelodiesEditor::timerCallback()
     const auto elapsed = juce::jlimit (0.0, 0.25, (now - lastRefresh) * 0.001);
     lastRefresh = now;
     footer.refresh (elapsed);
+    modulePanel.refresh();
+    chainPanel.refreshStatus();
 }
 
 } // namespace pm

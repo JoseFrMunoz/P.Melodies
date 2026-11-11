@@ -110,6 +110,8 @@ const Theme& Theme::dark()
         c.knobCapHover = hex (0x2A2D36);
         c.knobCapBorderHover = hex (0x464A55);
         c.backdrop = juce::Colour (0x99000000);
+        c.grid = hex (0x15171D);
+        c.axisText = hex (0x7E7A72);
         c.module = { hex (0xD4AF37), hex (0x8FA6BF), hex (0xC8743C), hex (0xAD374E) }; // gold, steel, copper, garnet
         return t;
     }();

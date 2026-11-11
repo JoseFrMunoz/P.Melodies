@@ -27,6 +27,7 @@ void Dropdown::attachTo (juce::RangedAudioParameter& parameter)
     if (auto* choice = dynamic_cast<juce::AudioParameterChoice*> (&parameter))
         setItems (choice->choices);
 
+    attachment.reset(); // the old one first, so it never sees the new state (see PillButton::attachTo)
     attachment = std::make_unique<juce::ParameterAttachment> (
         parameter, [this] (float v) { setSelectedIndex (juce::roundToInt (v), juce::dontSendNotification); }, nullptr);
     button.setTitle (parameter.getName (64));

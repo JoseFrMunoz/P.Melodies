@@ -20,6 +20,7 @@ ToggleSwitch::ToggleSwitch (juce::String buttonText) : juce::ToggleButton (std::
 
 void ToggleSwitch::attachTo (juce::RangedAudioParameter& parameter)
 {
+    attachment.reset(); // the old one first, so it never sees the new state (see PillButton::attachTo)
     attachment = std::make_unique<juce::ButtonParameterAttachment> (parameter, *this);
     if (getTitle().isEmpty())
         setTitle (parameter.getName (64));

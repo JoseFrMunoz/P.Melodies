@@ -10,8 +10,9 @@
 namespace pm::ui
 {
 
-ModulePanel::ModulePanel()
+ModulePanel::ModulePanel (PMelodiesProcessor& processor) : eqPanel (processor)
 {
+    addChildComponent (eqPanel);
     setModule (ModuleId::eq);
 }
 
@@ -19,7 +20,19 @@ void ModulePanel::setModule (ModuleId id)
 {
     module = id;
     setTitle (moduleInfo (id).title);
+    eqPanel.setVisible (id == ModuleId::eq);
     repaint();
+}
+
+void ModulePanel::refresh()
+{
+    if (eqPanel.isVisible())
+        eqPanel.refresh();
+}
+
+void ModulePanel::resized()
+{
+    eqPanel.setBounds (getLocalBounds());
 }
 
 void ModulePanel::paint (juce::Graphics& g)
@@ -29,6 +42,8 @@ void ModulePanel::paint (juce::Graphics& g)
     const auto info = moduleInfo (module);
 
     g.fillAll (c.background);
+    if (module == ModuleId::eq)
+        return; // the EQ page draws itself
 
     // Header row: colour, title, status (padding 14 16, as in the design).
     auto header = getLocalBounds().reduced (16, 14).removeFromTop (28);

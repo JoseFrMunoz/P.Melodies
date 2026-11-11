@@ -23,8 +23,20 @@ enum class Icon
     settings,
     power,
     compare,
-    close
+    close,
+    trash,
+    shapeBell, // EQ band shapes, in the order of dsp::eq::FilterType
+    shapeLowShelf,
+    shapeHighShelf,
+    shapeLowCut,
+    shapeHighCut,
+    shapeNotch,
+    shapeBandPass,
+    shapeTilt
 };
+
+/** Icon of an EQ band shape (FilterType index 0-7). */
+inline Icon eqShape (int typeIndex) { return static_cast<Icon> (static_cast<int> (Icon::shapeBell) + typeIndex); }
 
 /** Outline of an icon in its 16 × 16 design box. */
 const juce::Path& outline (Icon icon);

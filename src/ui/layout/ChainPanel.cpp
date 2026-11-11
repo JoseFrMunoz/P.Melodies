@@ -113,7 +113,7 @@ void ModuleRow::paint (juce::Graphics& g)
     g.drawText (info.shortName, textArea.withY (lineTop).withHeight (17), juce::Justification::centredLeft, true);
     g.setColour (c.textMuted);
     g.setFont (theme.ui (10.0f));
-    g.drawText (enabled ? juce::String ("Activo") : juce::String ("Apagado"), textArea.withY (lineTop + 17).withHeight (13),
+    g.drawText (enabled ? owner.getStatusText (id) : juce::String ("Apagado"), textArea.withY (lineTop + 17).withHeight (13),
                 juce::Justification::centredLeft, true);
 }
 
@@ -183,6 +183,24 @@ ChainPanel::ChainPanel (juce::RangedAudioParameter& orderParameter,
 }
 
 ChainPanel::~ChainPanel() = default;
+
+juce::String ChainPanel::getStatusText (ModuleId id) const
+{
+    return statusText ? statusText (id) : juce::String ("Activo");
+}
+
+void ChainPanel::refreshStatus()
+{
+    for (auto& row : rows)
+    {
+        auto& shown = shownStatus[(size_t) toIndex (row->getId())];
+        if (const auto status = getStatusText (row->getId()); status != shown)
+        {
+            shown = status;
+            row->repaint();
+        }
+    }
+}
 
 void ChainPanel::setSelectedModule (ModuleId id)
 {

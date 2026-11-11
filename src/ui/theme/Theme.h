@@ -41,6 +41,8 @@ struct Palette
     juce::Colour knobCapHover;
     juce::Colour knobCapBorderHover;
     juce::Colour backdrop;       // dims the window behind overlays
+    juce::Colour grid;           // grid lines of graphs (EQ display)
+    juce::Colour axisText;       // scale numbers of graphs
     std::array<juce::Colour, numModules> module; // EQ, compressor, saturation, distortion
 };
 

@@ -74,6 +74,13 @@ public:
 
     std::function<void (ModuleId)> onModuleSelected;
 
+    /** Short status under each module's name ("5 bandas"); "Apagado" when the module is off. */
+    std::function<juce::String (ModuleId)> statusText;
+    juce::String getStatusText (ModuleId id) const;
+
+    /** Repaints the rows whose status changed. */
+    void refreshStatus();
+
     void setSelectedModule (ModuleId id);
     ModuleId getSelectedModule() const noexcept { return selectedModule; }
 
@@ -137,6 +144,7 @@ private:
     int dragPreviewPosition = 0;
     float dragGrabOffset = 0.0f;
 
+    std::array<juce::String, numModules> shownStatus;
     juce::VBlankAttachment vblank;
     double lastFrameTime = 0.0;
 };

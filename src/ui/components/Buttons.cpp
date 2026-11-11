@@ -44,6 +44,9 @@ PillButton::PillButton (const juce::String& buttonText) : juce::Button (buttonTe
 void PillButton::attachTo (juce::RangedAudioParameter& parameter)
 {
     setClickingTogglesState (true);
+    // The old attachment must go first: the new one sets the button's state with a click
+    // notification, which the old one would otherwise write into its own parameter.
+    attachment.reset();
     attachment = std::make_unique<juce::ButtonParameterAttachment> (parameter, *this);
 }
 
