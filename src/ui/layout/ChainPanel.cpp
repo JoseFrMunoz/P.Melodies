@@ -138,17 +138,18 @@ void ModuleRow::mouseDrag (const juce::MouseEvent& e)
     if (! dragStartedOnHandle)
         return;
 
+    const auto y = e.getEventRelativeTo (&owner).position.y;
     if (! owner.isDragging() && e.getDistanceFromDragStart() > 2)
-        owner.beginDrag (*this, e);
+        owner.beginDrag (*this, y);
 
     if (owner.isDragging())
-        owner.continueDrag (e);
+        owner.continueDrag (y);
 }
 
 void ModuleRow::mouseUp (const juce::MouseEvent& e)
 {
     if (owner.isDragging())
-        owner.endDrag (e);
+        owner.endDrag();
     else if (! e.mouseWasDraggedSinceMouseDown())
         owner.rowClicked (*this);
 
@@ -162,11 +163,13 @@ ChainPanel::ChainPanel (juce::RangedAudioParameter& orderParameter,
                        [this] (float v)
                        {
                            order = chain::decode (juce::roundToInt (v));
-                           if (! isDragging())
-                               layoutRows();
+                           if (draggedRow != nullptr) // the host moved things mid-drag: keep holding the same module
+                               dragFromPosition = chain::positionOf (order, draggedRow->getId());
+                           updateTargets (rowsPlaced);
                        },
                        nullptr),
-      order (chain::decode (chain::defaultOrderIndex))
+      order (chain::decode (chain::defaultOrderIndex)),
+      vblank (this, [this] (double timestampSeconds) { frame (timestampSeconds); })
 {
     for (int i = 0; i < numModules; ++i)
     {
@@ -193,36 +196,99 @@ juce::Rectangle<int> ChainPanel::getSlotBounds (int position) const
     return { paddingX, firstRowY + position * (ModuleRow::height + rowGap), getWidth() - 2 * paddingX, ModuleRow::height };
 }
 
-int ChainPanel::dropSlotForY (float y) const
+int ChainPanel::positionForRowTop (float y) const
 {
-    int slot = 0;
-    for (int p = 0; p < numModules; ++p)
-        if (y > (float) getSlotBounds (p).getCentreY())
-            slot = p + 1;
-    return slot;
+    const auto pitch = (float) (ModuleRow::height + rowGap);
+    return juce::jlimit (0, numModules - 1, juce::roundToInt ((y - (float) getSlotBounds (0).getY()) / pitch));
 }
 
-int ChainPanel::targetPosition (int fromPosition, int slot) noexcept
+chain::Order ChainPanel::getDisplayedOrder() const
 {
-    return slot > fromPosition ? slot - 1 : slot;
+    return draggedRow != nullptr ? chain::move (order, dragFromPosition, dragPreviewPosition) : order;
 }
 
-void ChainPanel::layoutRows()
+juce::Rectangle<int> ChainPanel::getRowTargetBounds (ModuleId id) const
 {
+    return getSlotBounds (chain::positionOf (getDisplayedOrder(), id));
+}
+
+void ChainPanel::updateTargets (bool animate)
+{
+    const auto displayed = getDisplayedOrder();
     for (int p = 0; p < numModules; ++p)
     {
-        auto& row = *rows[(size_t) toIndex (order[(size_t) p])];
-        if (&row != draggedRow)
+        const auto index = (size_t) toIndex (displayed[(size_t) p]);
+        rowTargetTop[index] = (float) getSlotBounds (p).getY();
+        if (! animate)
+            rowTop[index] = rowTargetTop[index];
+    }
+
+    for (auto& row : rows)
+        if (row.get() != draggedRow)
+            placeRow (*row);
+
+    if (! animate)
+    {
+        if (landingRow != nullptr)
+            landingRow->setDragging (false);
+        landingRow = nullptr;
+    }
+    rowsPlaced = true;
+}
+
+void ChainPanel::placeRow (ModuleRow& row)
+{
+    const auto slot = getSlotBounds (0);
+    row.setBounds (slot.getX(), juce::roundToInt (rowTop[(size_t) toIndex (row.getId())]), slot.getWidth(), slot.getHeight());
+}
+
+void ChainPanel::advanceAnimation (double seconds)
+{
+    const auto step = (float) (1.0 - std::exp (-juce::jmax (0.0, seconds) / glideSeconds));
+    for (auto& row : rows)
+    {
+        if (row.get() == draggedRow)
+            continue; // it follows the pointer
+
+        const auto index = (size_t) toIndex (row->getId());
+        auto& top = rowTop[index];
+        const auto target = rowTargetTop[index];
+        top += (target - top) * step;
+        if (std::abs (target - top) < 0.5f)
+            top = target;
+        placeRow (*row);
+
+        if (row.get() == landingRow && juce::exactlyEqual (top, target))
         {
-            row.setTransform ({});
-            row.setBounds (getSlotBounds (p));
+            landingRow->setDragging (false);
+            landingRow = nullptr;
+            repaint(); // removes the gap outline
         }
     }
 }
 
+bool ChainPanel::isAnimating() const noexcept
+{
+    for (auto& row : rows)
+        if (row.get() != draggedRow && ! juce::exactlyEqual (rowTop[(size_t) toIndex (row->getId())],
+                                                             rowTargetTop[(size_t) toIndex (row->getId())]))
+            return true;
+    return landingRow != nullptr;
+}
+
+void ChainPanel::frame (double timestampSeconds)
+{
+    // Frames can be irregular (or stop while the window is hidden): cap the step so a late frame
+    // does not jump.
+    const auto elapsed = lastFrameTime > 0.0 ? juce::jlimit (0.0, 0.05, timestampSeconds - lastFrameTime) : 0.0;
+    lastFrameTime = timestampSeconds;
+    if (isAnimating())
+        advanceAnimation (elapsed);
+}
+
 void ChainPanel::resized()
 {
-    layoutRows();
+    updateTargets (false);
 }
 
 void ChainPanel::rowClicked (ModuleRow& row)
@@ -232,51 +298,54 @@ void ChainPanel::rowClicked (ModuleRow& row)
         onModuleSelected (row.getId());
 }
 
-void ChainPanel::beginDrag (ModuleRow& row, const juce::MouseEvent& e)
+void ChainPanel::beginDrag (ModuleRow& row, float y)
 {
+    if (landingRow != nullptr)
+        landingRow->setDragging (false);
+    landingRow = nullptr;
+
     draggedRow = &row;
     dragFromPosition = chain::positionOf (order, row.getId());
-    dragGrabOffset = e.getEventRelativeTo (this).position.y - (float) row.getY();
+    dragPreviewPosition = dragFromPosition;
+    dragGrabOffset = y - (float) row.getY();
     row.setDragging (true);
     row.toFront (false);
+    repaint();
 }
 
-void ChainPanel::continueDrag (const juce::MouseEvent& e)
+void ChainPanel::continueDrag (float y)
 {
     if (draggedRow == nullptr)
         return;
 
-    const auto y = e.getEventRelativeTo (this).position.y;
     const auto top = juce::jlimit ((float) getSlotBounds (0).getY() - 12.0f,
                                    (float) getSlotBounds (numModules - 1).getY() + 12.0f, y - dragGrabOffset);
-    draggedRow->setTopLeftPosition (getSlotBounds (0).getX(), juce::roundToInt (top));
+    rowTop[(size_t) toIndex (draggedRow->getId())] = top;
+    placeRow (*draggedRow);
     draggedRow->setTransform (juce::AffineTransform::rotation (dragTiltRadians, (float) draggedRow->getBounds().getCentreX(),
                                                                (float) draggedRow->getBounds().getCentreY()));
 
-    const auto slot = dropSlotForY (y);
-    const auto newDropSlot = targetPosition (dragFromPosition, slot) == dragFromPosition ? -1 : slot;
-    if (newDropSlot != dropSlot)
+    // The others make room as soon as the dragged row is nearer to another slot than to its own.
+    if (const auto preview = positionForRowTop (top); preview != dragPreviewPosition)
     {
-        dropSlot = newDropSlot;
+        dragPreviewPosition = preview;
+        updateTargets (true);
         repaint();
     }
 }
 
-void ChainPanel::endDrag (const juce::MouseEvent& e)
+void ChainPanel::endDrag()
 {
     if (draggedRow == nullptr)
         return;
 
-    const auto slot = dropSlotForY (e.getEventRelativeTo (this).position.y);
-    const auto to = targetPosition (dragFromPosition, slot);
+    auto& row = *draggedRow;
+    row.setTransform ({});
+    moveModule (dragFromPosition, dragPreviewPosition); // one gesture for the host (and one undo step)
 
-    draggedRow->setDragging (false);
-    draggedRow->setTransform ({});
     draggedRow = nullptr;
-    dropSlot = -1;
-
-    moveModule (dragFromPosition, to);
-    layoutRows();
+    landingRow = &row; // glides from where it was dropped into its slot, still raised
+    updateTargets (true);
     repaint();
 }
 
@@ -318,6 +387,18 @@ void ChainPanel::paint (juce::Graphics& g)
     drawMarker ("IN", firstRowY - rowGap - markerHeight);
     drawMarker ("OUT", getSlotBounds (numModules - 1).getBottom() + rowGap);
 
+    // The gap the dragged row will drop into, under the rows.
+    if (const auto* held = draggedRow != nullptr ? draggedRow : landingRow)
+    {
+        juce::Path outline;
+        outline.addRoundedRectangle (getRowTargetBounds (held->getId()).toFloat().reduced (0.5f), theme.metrics.radiusRow);
+        juce::Path dashed;
+        const float dashes[] = { 4.0f, 3.0f };
+        juce::PathStrokeType (1.0f).createDashedStroke (dashed, outline, dashes, 2);
+        g.setColour (c.accent.withAlpha (0.55f));
+        g.fillPath (dashed);
+    }
+
     // Help text at the bottom, above a separator.
     const auto help = text ("Arrastra desde el asa para cambiar el orden. Clic para abrir el m\xc3\xb3" "dulo.");
     auto helpArea = getLocalBounds().reduced (paddingX, 0).withTrimmedBottom (12);
@@ -333,19 +414,6 @@ void ChainPanel::paint (juce::Graphics& g)
     juce::TextLayout layout;
     layout.createLayout (s, (float) helpArea.getWidth() - 12.0f);
     layout.draw (g, helpArea.withTrimmedLeft (6).toFloat());
-}
-
-void ChainPanel::paintOverChildren (juce::Graphics& g)
-{
-    if (dropSlot < 0)
-        return;
-
-    const auto& c = themeOf (*this).colours;
-    const auto y = dropSlot < numModules ? (float) getSlotBounds (dropSlot).getY() - rowGap * 0.5f
-                                         : (float) getSlotBounds (numModules - 1).getBottom() + rowGap * 0.5f;
-    const auto line = juce::Rectangle<float> ((float) paddingX, y - 1.5f, (float) (getWidth() - 2 * paddingX), 3.0f);
-    g.setColour (c.accent);
-    g.fillRoundedRectangle (line, 1.5f);
 }
 
 } // namespace pm::ui

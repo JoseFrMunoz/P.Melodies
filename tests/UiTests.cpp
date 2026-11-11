@@ -138,35 +138,156 @@ TEST_CASE ("Knob gestures: drag, fine drag, default value", "[ui][knob][phase0]"
     CHECK (valueOf (processor, param::id::outputGain) == Catch::Approx (0.0f));
 }
 
-TEST_CASE ("Chain panel: drag and drop reorders the chain parameter", "[ui][chain][phase0]")
+namespace
 {
-    // Slot semantics: dropping into slot s (0 = before the first row … 4 = after the last).
-    CHECK (ui::ChainPanel::targetPosition (0, 4) == 3); // first module to the end
-    CHECK (ui::ChainPanel::targetPosition (3, 0) == 0); // last module to the start
-    CHECK (ui::ChainPanel::targetPosition (1, 1) == 1); // dropped where it was
-    CHECK (ui::ChainPanel::targetPosition (1, 2) == 1); // just below itself: no move
+/** Runs the chain animation at 60 frames per second until it settles; returns the frames used. */
+int settle (ui::ChainPanel& panel, int maxFrames = 240)
+{
+    int frames = 0;
+    while (panel.isAnimating() && frames < maxFrames)
+    {
+        panel.advanceAnimation (1.0 / 60.0);
+        ++frames;
+    }
+    return frames;
+}
 
+int centreY (const juce::Component& c) { return c.getBounds().getCentreY(); }
+} // namespace
+
+TEST_CASE ("Chain panel: rows are laid out in the processing order and follow automation smoothly", "[ui][chain][phase0]")
+{
     PMelodiesProcessor processor;
     auto editor = std::unique_ptr<juce::AudioProcessorEditor> (processor.createEditorAndMakeActive());
     auto& panel = dynamic_cast<PMelodiesEditor&> (*editor).getChainPanel();
 
-    // Drop slots follow the row centres.
-    CHECK (panel.dropSlotForY ((float) panel.getSlotBounds (0).getY()) == 0);
-    CHECK (panel.dropSlotForY ((float) panel.getSlotBounds (2).getBottom()) == 3);
-    CHECK (panel.dropSlotForY ((float) panel.getSlotBounds (3).getBottom() + 20.0f) == 4);
+    // Opening the window places the rows at once, without an animation.
+    CHECK_FALSE (panel.isAnimating());
+    for (int p = 0; p < numModules; ++p)
+        CHECK (panel.getRow (moduleAt (p)).getBounds() == panel.getSlotBounds (p));
 
+    // Nearest slot for a row's top edge: switches half-way between two slots, clamped at the ends.
+    const auto pitch = (float) (panel.getSlotBounds (1).getY() - panel.getSlotBounds (0).getY());
+    const auto top0 = (float) panel.getSlotBounds (0).getY();
+    CHECK (panel.positionForRowTop (top0) == 0);
+    CHECK (panel.positionForRowTop (top0 + 0.45f * pitch) == 0);
+    CHECK (panel.positionForRowTop (top0 + 0.55f * pitch) == 1);
+    CHECK (panel.positionForRowTop (top0 + 3.0f * pitch) == 3);
+    CHECK (panel.positionForRowTop (top0 - 40.0f) == 0);
+    CHECK (panel.positionForRowTop (top0 + 9.0f * pitch) == 3);
+
+    // Moving a module (what a drop does) updates the parameter and the order.
     panel.moveModule (3, 0); // distortion to the front
     const auto expected = chain::Order { ModuleId::distortion, ModuleId::eq, ModuleId::compressor, ModuleId::saturation };
     CHECK (juce::roundToInt (valueOf (processor, param::id::chainOrder)) == chain::encode (expected));
     CHECK (panel.getOrder() == expected);
 
-    // Rows are laid out in the processing order.
-    CHECK (panel.getRow (ModuleId::distortion).getBounds() == panel.getSlotBounds (0));
-    CHECK (panel.getRow (ModuleId::saturation).getBounds() == panel.getSlotBounds (3));
+    // The rows glide to their new slots instead of jumping, and settle in well under half a second.
+    auto& distortion = panel.getRow (ModuleId::distortion);
+    CHECK (panel.getRowTargetBounds (ModuleId::distortion) == panel.getSlotBounds (0));
+    CHECK (distortion.getBounds() == panel.getSlotBounds (3));
+    panel.advanceAnimation (1.0 / 60.0);
+    CHECK (distortion.getY() < panel.getSlotBounds (3).getY());
+    CHECK (distortion.getY() > panel.getSlotBounds (0).getY());
+    CHECK (settle (panel) < 25);
+    for (int p = 0; p < numModules; ++p)
+        CHECK (panel.getRow (expected[(size_t) p]).getBounds() == panel.getSlotBounds (p));
 
-    // Automation from the host moves the rows too.
+    // Automation from the host moves the rows the same way.
     setParameter (processor, param::id::chainOrder, 0.0f);
+    CHECK (panel.getRowTargetBounds (ModuleId::eq) == panel.getSlotBounds (0));
+    CHECK (panel.isAnimating());
+    settle (panel);
     CHECK (panel.getRow (ModuleId::eq).getBounds() == panel.getSlotBounds (0));
+    CHECK (panel.getRow (ModuleId::distortion).getBounds() == panel.getSlotBounds (3));
+
+    processor.editorBeingDeleted (editor.get());
+}
+
+TEST_CASE ("Chain panel: while dragging, the other rows make room live and the drop needs no aiming", "[ui][chain][phase0]")
+{
+    PMelodiesProcessor processor;
+    auto editor = std::unique_ptr<juce::AudioProcessorEditor> (processor.createEditorAndMakeActive());
+    auto& panel = dynamic_cast<PMelodiesEditor&> (*editor).getChainPanel();
+    const auto defaultOrder = chain::decode (chain::defaultOrderIndex);
+    const auto pitch = panel.getSlotBounds (1).getY() - panel.getSlotBounds (0).getY();
+
+    auto& distortion = panel.getRow (ModuleId::distortion);
+    auto& compressor = panel.getRow (ModuleId::compressor);
+    auto& saturation = panel.getRow (ModuleId::saturation);
+
+    // Grab distortion (last) by its handle and pull it up, a few pixels per frame like a real drag.
+    auto pointer = (float) centreY (distortion);
+    panel.beginDrag (distortion, pointer);
+    REQUIRE (panel.isDragging());
+
+    const auto dragTo = [&] (float target)
+    {
+        while (std::abs (pointer - target) > 0.5f)
+        {
+            pointer += juce::jlimit (-6.0f, 6.0f, target - pointer);
+            panel.continueDrag (pointer);
+            panel.advanceAnimation (1.0 / 60.0);
+        }
+    };
+
+    // Less than half a slot: nothing moves out of the way yet.
+    dragTo (pointer - 0.4f * (float) pitch);
+    CHECK (panel.getDisplayedOrder() == defaultOrder);
+
+    // Past half a slot: saturation slides down into distortion's place, live, before any drop.
+    dragTo (pointer - 0.3f * (float) pitch);
+    CHECK (panel.getDisplayedOrder()
+           == chain::Order { ModuleId::eq, ModuleId::compressor, ModuleId::distortion, ModuleId::saturation });
+    CHECK (panel.getRowTargetBounds (ModuleId::saturation) == panel.getSlotBounds (3));
+    settle (panel);
+    CHECK (saturation.getBounds() == panel.getSlotBounds (3));
+
+    // Keep pulling: compressor makes room too. The dragged row follows the pointer exactly.
+    const auto grab = pointer - (float) distortion.getY();
+    dragTo (pointer - 1.0f * (float) pitch);
+    CHECK (distortion.getY() == juce::roundToInt (pointer - grab));
+    CHECK (panel.getDisplayedOrder()
+           == chain::Order { ModuleId::eq, ModuleId::distortion, ModuleId::compressor, ModuleId::saturation });
+    settle (panel);
+    CHECK (compressor.getBounds() == panel.getSlotBounds (2));
+
+    // Nothing reaches the plugin until the drop (one gesture, one undo step in phase 5).
+    CHECK (juce::roundToInt (valueOf (processor, param::id::chainOrder)) == chain::defaultOrderIndex);
+
+    // Drop anywhere: no need to aim at a line. The row glides into the gap it was showing.
+    panel.endDrag();
+    CHECK_FALSE (panel.isDragging());
+    const auto dropped = chain::Order { ModuleId::eq, ModuleId::distortion, ModuleId::compressor, ModuleId::saturation };
+    CHECK (juce::roundToInt (valueOf (processor, param::id::chainOrder)) == chain::encode (dropped));
+    CHECK (panel.getRowTargetBounds (ModuleId::distortion) == panel.getSlotBounds (1));
+    CHECK (panel.isAnimating());
+    CHECK (settle (panel) < 25);
+    for (int p = 0; p < numModules; ++p)
+        CHECK (panel.getRow (dropped[(size_t) p]).getBounds() == panel.getSlotBounds (p));
+
+    // A drag that goes somewhere else and comes back changes nothing.
+    const auto start = (float) centreY (distortion);
+    pointer = start;
+    panel.beginDrag (distortion, pointer);
+    dragTo (start - 0.8f * (float) pitch);
+    CHECK (panel.getDisplayedOrder()[0] == ModuleId::distortion);
+    dragTo (start);
+    CHECK (panel.getDisplayedOrder() == dropped);
+    panel.endDrag();
+    settle (panel);
+    CHECK (juce::roundToInt (valueOf (processor, param::id::chainOrder)) == chain::encode (dropped));
+    CHECK (distortion.getBounds() == panel.getSlotBounds (1));
+
+    // Dragging far beyond the ends is clamped to the first and last slots.
+    pointer = (float) centreY (distortion);
+    panel.beginDrag (distortion, pointer);
+    dragTo (pointer + 10.0f * (float) pitch);
+    CHECK (distortion.getY() <= panel.getSlotBounds (numModules - 1).getY() + 12);
+    panel.endDrag();
+    settle (panel);
+    CHECK (panel.getOrder()
+           == chain::Order { ModuleId::eq, ModuleId::compressor, ModuleId::saturation, ModuleId::distortion });
 
     processor.editorBeingDeleted (editor.get());
 }
@@ -397,6 +518,29 @@ TEST_CASE ("Snapshot of the interface for visual review", "[.snapshot]")
         setParameter (processor, param::id::mix, 80.0f);
         Gallery gallery (processor);
         savePng (gallery.createComponentSnapshot (gallery.getLocalBounds(), true, 2.0f), "03-components");
+    }
+
+    // Chain panel while dragging distortion up: mid-slide, then with the gap open.
+    {
+        auto& panel = pm.getChainPanel();
+        auto& row = panel.getRow (ModuleId::distortion);
+        const auto pitch = panel.getSlotBounds (1).getY() - panel.getSlotBounds (0).getY();
+        auto y = (float) row.getBounds().getCentreY();
+        panel.beginDrag (row, y);
+        for (int i = 0; i < 12; ++i)
+        {
+            y -= 1.4f * (float) pitch / 12.0f;
+            panel.continueDrag (y);
+        }
+        panel.advanceAnimation (2.0 / 60.0);
+        savePng (panel.createComponentSnapshot (panel.getLocalBounds(), true, 2.0f), "04-chain-drag-sliding");
+        panel.advanceAnimation (1.0);
+        panel.advanceAnimation (1.0);
+        savePng (panel.createComponentSnapshot (panel.getLocalBounds(), true, 2.0f), "05-chain-drag-gap");
+        panel.endDrag();
+        panel.advanceAnimation (1.0);
+        panel.advanceAnimation (1.0);
+        savePng (panel.createComponentSnapshot (panel.getLocalBounds(), true, 2.0f), "06-chain-dropped");
     }
 
     pm.selectModule (ModuleId::compressor);

@@ -58,8 +58,12 @@ private:
 
 /**
     Left panel "Cadena de señal": the four modules in their real processing order between IN and
-    OUT. Drag a row by its handle to reorder (a line shows where it will land); click a row to
-    open the module; the power button bypasses it.
+    OUT. Click a row to open the module; the power button bypasses it.
+
+    Reordering is live: while a row is dragged by its handle, the other rows slide out of the way
+    to the places they will take, so the gap always shows where it will land. On release the row
+    glides into that gap and the new order is sent to the plugin as one gesture. Rows also glide
+    when the order changes from outside (host automation, and presets and undo in phase 5).
 */
 class ChainPanel final : public juce::Component
 {
@@ -79,38 +83,62 @@ public:
     /** Bounds of the row slot at a chain position. */
     juce::Rectangle<int> getSlotBounds (int position) const;
 
-    /** Drop slot (0 = before the first module … 4 = after the last) for a y coordinate. */
-    int dropSlotForY (float y) const;
+    /** Chain position whose slot is nearest to a row whose top edge is at y. */
+    int positionForRowTop (float y) const;
 
-    /** Final position of a module dragged from `fromPosition` and dropped in `dropSlot`. */
-    static int targetPosition (int fromPosition, int dropSlot) noexcept;
+    /** Order on screen: while dragging, the dragged module already sits where it would land. */
+    chain::Order getDisplayedOrder() const;
 
-    // Called by the rows.
+    /** Slot a row is heading to; getBounds() is where it is now, mid-animation. */
+    juce::Rectangle<int> getRowTargetBounds (ModuleId id) const;
+
+    // Called by the rows. y is in panel coordinates: the pointer while dragging.
     void rowClicked (ModuleRow& row);
-    void beginDrag (ModuleRow& row, const juce::MouseEvent& e);
-    void continueDrag (const juce::MouseEvent& e);
-    void endDrag (const juce::MouseEvent& e);
+    void beginDrag (ModuleRow& row, float y);
+    void continueDrag (float y);
+    void endDrag();
     bool isDragging() const noexcept { return draggedRow != nullptr; }
+    ModuleRow* getDraggedRow() const noexcept { return draggedRow; }
 
-    /** Applies a drag-and-drop move (used by the mouse handlers and by tests). */
+    /** Applies a move to the order parameter as one gesture (used on release and by tests). */
     void moveModule (int fromPosition, int toPosition);
 
+    /**
+        Moves every row a step closer to its slot (exponential approach, time constant
+        glideSeconds). Called on every screen refresh; public so tests can run it frame by frame.
+    */
+    void advanceAnimation (double seconds);
+    bool isAnimating() const noexcept;
+
+    static constexpr double glideSeconds = 0.045;
+
     void paint (juce::Graphics&) override;
-    void paintOverChildren (juce::Graphics&) override;
     void resized() override;
 
 private:
-    void layoutRows();
+    /** Sets each row's target slot; jumps there when animate is false (first layout, resize). */
+    void updateTargets (bool animate);
+    void placeRow (ModuleRow& row);
+    void frame (double timestampSeconds);
 
     juce::ParameterAttachment orderAttachment;
     chain::Order order;
     std::array<std::unique_ptr<ModuleRow>, numModules> rows;
     ModuleId selectedModule = ModuleId::eq;
 
+    // Animation state per module index: where the row's top edge is and where it is heading.
+    std::array<float, numModules> rowTop {};
+    std::array<float, numModules> rowTargetTop {};
+    bool rowsPlaced = false;
+
     ModuleRow* draggedRow = nullptr;
+    ModuleRow* landingRow = nullptr; // released, still gliding into its slot (keeps the raised look)
     int dragFromPosition = 0;
+    int dragPreviewPosition = 0;
     float dragGrabOffset = 0.0f;
-    int dropSlot = -1;
+
+    juce::VBlankAttachment vblank;
+    double lastFrameTime = 0.0;
 };
 
 } // namespace pm::ui
