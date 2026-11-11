@@ -23,7 +23,7 @@ src/
     eq/                    EQ: bandas con suavizado, solo, carácter (fase 1)
     PlaceholderModules.h   Fábrica de módulos; marcadores para los que aún no existen
   ui/                    Interfaz: tema, componentes y paneles
-    eq/                    Página del EQ: gráfica, editor de banda y analizador
+    eq/                    Página del EQ: gráfica, mini panel de la banda, editor de banda y analizador
 tests/                   Tests Catch2 (se ejecutan en local y en CI)
 ```
 
@@ -80,7 +80,8 @@ Las peticiones que llegan durante el *pre-roll* reinician el cambio con el orden
 - **Interfaz:** lee los medidores con atómicos en un temporizador a 30 Hz. Los cambios de parámetros van por los adjuntos de JUCE (`ParameterAttachment`), que agrupan cada arrastre en un gesto.
 - **Audio → interfaz con más datos** (muestras para el analizador, historiales de nivel de las pantallas de los módulos): `dsp::LockFreeFifo`, una cola de un productor y un consumidor sin bloqueos ni reservas de memoria. Si está llena, el audio escribe lo que cabe y sigue: nunca espera a la interfaz.
 - **Analizador del EQ:** `dsp::AnalyzerTap` mete en esa cola la mezcla mono de la entrada (Pre) o la salida (Post) del EQ. Solo empuja el juego de módulos que se oye, así que durante un reordenado la cola sigue teniendo un único productor. La interfaz calcula la FFT a 30 Hz (`ui::SpectrumAnalyser`).
-- **Estado de la interfaz que no es parámetro** (módulo abierto, analizador y escala del EQ): propiedades del `ValueTree` del estado; se guardan con el proyecto. El solo de banda es un atómico del procesador y no se guarda.
+- **Estado de la interfaz que no es parámetro** (módulo abierto, analizador y escala del EQ en dB: 6, 12 o 30): propiedades del `ValueTree` del estado; se guardan con el proyecto. El solo de banda es un atómico del procesador y no se guarda. El solo mantenido del mini panel (`EqGraph::beginSolo/endSolo`) devuelve al soltar el solo que hubiera antes.
+- **Teclado:** solo la gráfica del EQ toma el foco (para Supr y Esc); los botones del mini panel no lo toman, para que la barra espaciadora siga llegando a FL Studio.
 - **Estado:** XML con número de versión (`stateVersion`, ahora 2). `migrateState()` completa los parámetros que falten con su valor por defecto y migra los formatos antiguos (versión 1 → 2: el orden de la cadena pasa del parámetro `chainOrder` a la propiedad `chainOrder`). Además de los parámetros, el estado guarda el orden de la cadena (lista de módulos, §12) y el módulo seleccionado.
 
 ## Interfaz
