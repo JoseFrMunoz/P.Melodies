@@ -283,6 +283,7 @@ Todo lo que comparten los módulos. Si falla aquí, fallaría en los cuatro.
 
 ### Fase 1 — EQ
 Sección 4 completa, DSP e interfaz.
+- **Estado:** empezada el 2026-11-11. P.P. aprobó todas las recomendaciones de las preguntas del módulo (§12, filas «EQ: …»).
 - **Referencias:** manual de Pro-Q 4 (sus modos de carácter son los de §4) y, como apoyo, el de Pro-Q 3.
 - **Diseño preparado para la ampliación pendiente de §13** (tipo Volcano), sin implementarla:
   - Cada banda es un objeto independiente con su propia ruta de proceso.
@@ -412,6 +413,14 @@ Decisiones tomadas con P.P. Tienen el mismo valor que el resto de la especificac
 | Referencia de la distorsión (2026-11-07) | Distructor de FL Studio como principal; Fruity Fast Dist, Fruity WaveShaper y Saturn 2 como apoyo. Se puede cambiar si no convence. |
 | Visto bueno de la fase 0 (2026-11-11) | P.P. la probó en FL Studio: «todo bien» salvo el Mix global y el arrastre del panel de la cadena, y pidió seguir con las fases. Los dos cambios se hacen en `phase/0-foundation` y él los comprueba durante la fase 1. La fase 1 sale de esa rama. |
 | Reordenado en vivo (2026-11-11) | A petición de P.P.: al arrastrar un módulo, los demás se apartan solos y con animación, y al soltar el módulo se desliza a su hueco sin tener que apuntar a una línea. Sustituye a la línea de destino de la pantalla 06. El orden se aplica al soltar, como un solo gesto. |
+| EQ: bandas y automatización (2026-11-11, fase 1) | 8 bandas fijas en la lista de parámetros («EQ · Banda 1 · Frecuencia»…), cada una con un parámetro «Activa» que indica si existe. Crear ocupa el primer hueco libre; borrar no renumera las demás, para que la automatización grabada siga moviendo la banda correcta. El *Solo* no se automatiza ni se guarda. El modo del analizador y la escala (±12/±30) se guardan con el proyecto, pero cargar un preset no los cambia. |
+| EQ: doble clic (2026-11-11, fase 1) | El tipo depende de la frecuencia: < 30 Hz corte de graves (12 dB/oct); 30–80 Hz shelf grave; 80 Hz–10 kHz campana (en la franja más baja de la gráfica, notch); 10–16 kHz shelf agudo; > 16 kHz corte de agudos (12 dB/oct). Ganancia = altura del clic; Q inicial 1. |
+| EQ: carácter sin latencia (2026-11-11, fase 1) | Opción A: saturación suave de orden bajo (casi solo 2.º y 3.er armónico) sin oversampling. El EQ mantiene la latencia cero; un test mide que el aliasing queda muy por debajo de lo audible a niveles normales. |
+| EQ: cuánto colorea (2026-11-11, fase 1) | *Subtle* (transformador): armónicos impares, algo más en graves, ≈ 0,1 % con un tono de 1 kHz a −12 dBFS. *Warm* (válvula): sobre todo 2.º armónico, ≈ 0,5 %. Ambos crecen con el nivel. Se afina de oído con P.P. |
+| EQ: solo de banda (2026-11-11, fase 1) | Como en Pro-Q: se oye la zona que toca la banda (pasa-banda con su frecuencia y su Q; en shelves, la zona del shelf), y en los cortes lo que se quita. Una sola banda en solo a la vez. |
+| EQ: tilt shelf (2026-11-11, fase 1) | Con ganancia +6 dB, los agudos suben 6 dB y los graves bajan 6 dB, girando sobre la frecuencia de la banda. |
+| EQ: extras de manejo (2026-11-11, fase 1) | Supr borra la banda seleccionada; Ctrl al arrastrar un punto da ajuste fino; doble clic en un punto permite escribir frecuencia, ganancia y Q; clic derecho en un punto abre un menú (tipo, bypass, borrar); la escala pasa sola de ±12 a ±30 al llevar una banda más allá de 12 dB. |
+| EQ: funciones de Pro-Q 4 fuera de la especificación (2026-11-11, fase 1) | Ninguna en la v1: interacción ganancia-Q, pendiente en campanas y shelves, pendientes fraccionarias, brickwall, flat tilt, pasa-todo, selección múltiple y crear arrastrando la curva. Si P.P. quiere alguna, va a §13. |
 
 ---
 
