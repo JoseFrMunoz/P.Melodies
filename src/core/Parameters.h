@@ -31,7 +31,30 @@ inline constexpr const char* compressorEnabled = "compressorEnabled";
 inline constexpr const char* saturationEnabled = "saturationEnabled";
 inline constexpr const char* distortionEnabled = "distortionEnabled";
 inline constexpr const char* bypass = "bypass";
+inline constexpr const char* eqCharacter = "eqCharacter";
 } // namespace id
+
+/** Fields of an EQ band. The IDs are "eqB<n><Field>" with n from 1 to 8, e.g. "eqB3Freq". */
+enum class EqField
+{
+    active,
+    type,
+    frequency,
+    gain,
+    q,
+    slope,
+    bypass
+};
+
+juce::String eqBandId (int band, EqField field);
+
+/** Default frequency of each band slot (only used until the band is created). */
+inline constexpr std::array<float, eq::numBands> eqDefaultFrequencies { 50.0f, 120.0f, 300.0f, 700.0f,
+                                                                        1500.0f, 3500.0f, 8000.0f, 14000.0f };
+
+juce::StringArray eqTypeNames();
+juce::StringArray eqSlopeNames();
+juce::StringArray eqCharacterNames();
 
 /** Version hint given to every parameter (JUCE uses it for AU/VST3 parameter ordering). */
 inline constexpr int versionHint = 1;
@@ -72,6 +95,19 @@ private:
     std::atomic<float>* chainOrder = nullptr;
     std::array<std::atomic<float>*, numModules> moduleEnabled {};
     std::atomic<float>* bypass = nullptr;
+
+    struct EqBand
+    {
+        std::atomic<float>* active = nullptr;
+        std::atomic<float>* type = nullptr;
+        std::atomic<float>* frequency = nullptr;
+        std::atomic<float>* gain = nullptr;
+        std::atomic<float>* q = nullptr;
+        std::atomic<float>* slope = nullptr;
+        std::atomic<float>* bypass = nullptr;
+    };
+    std::array<EqBand, eq::numBands> eqBands {};
+    std::atomic<float>* eqCharacter = nullptr;
 };
 
 } // namespace pm::param

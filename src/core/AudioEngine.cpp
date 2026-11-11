@@ -104,6 +104,7 @@ void AudioEngine::applyParameters (const EngineParameters& p, bool isOffline, bo
         chain.setModuleBypassed (moduleAt (i), ! p.moduleEnabled[(size_t) i]);
 
     chain.setMinimumOversamplingIndex (isOffline ? p.offlineOversamplingIndex : p.realtimeOversamplingIndex);
+    chain.setModuleParameters (p.modules);
 }
 
 void AudioEngine::process (juce::AudioBuffer<float>& buffer, const juce::AudioBuffer<float>* sidechain,

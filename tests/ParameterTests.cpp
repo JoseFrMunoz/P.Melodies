@@ -44,7 +44,8 @@ TEST_CASE ("Every parameter is automatable, uniquely identified and readable", "
         CHECK (ranged->getVersionHint() == param::versionHint);
     }
 
-    CHECK (ids.size() == 14);
+    // 14 global and chain parameters (phase 0) + the EQ: character and 7 per band (phase 1).
+    CHECK (ids.size() == 14 + 1 + 7 * eq::numBands);
     CHECK (processor.getBypassParameter() == processor.getState().getParameter (param::id::bypass));
 }
 

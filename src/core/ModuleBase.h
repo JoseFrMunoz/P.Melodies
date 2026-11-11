@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/Module.h"
+#include "core/ModuleParameters.h"
 #include "dsp/DelayLine.h"
 #include "dsp/OversamplingEngine.h"
 
@@ -44,6 +45,12 @@ public:
     void setBypassed (bool shouldBeBypassed) noexcept final { bypassed = shouldBeBypassed; }
 
     bool isBypassed() const noexcept { return bypassed; }
+
+    /**
+        New settings for this block (audio thread, before process()). Each module keeps its own
+        part; it must not allocate. Both module sets of the chain receive them.
+    */
+    virtual void setParameters (const ModuleParameters& /*parameters*/) noexcept {}
 
     /** Global quality floor (factor index, 0 = 1x … 4 = 16x). Ignored by modules without oversampling. */
     void setMinimumOversamplingIndex (int index) noexcept;

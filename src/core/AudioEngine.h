@@ -30,6 +30,7 @@ struct EngineParameters
     int chainOrder = chain::defaultOrderIndex;
     std::array<bool, numModules> moduleEnabled { true, true, true, true };
     bool bypassed = false;
+    ModuleParameters modules;
 };
 
 /**

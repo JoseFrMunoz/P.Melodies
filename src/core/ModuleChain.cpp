@@ -69,6 +69,13 @@ void ModuleChain::setModuleBypassed (ModuleId id, bool shouldBeBypassed) noexcep
         set[(size_t) toIndex (id)]->setBypassed (shouldBeBypassed);
 }
 
+void ModuleChain::setModuleParameters (const ModuleParameters& parameters) noexcept
+{
+    for (auto& set : sets)
+        for (auto& module : set)
+            module->setParameters (parameters);
+}
+
 void ModuleChain::setMinimumOversamplingIndex (int index) noexcept
 {
     for (auto& set : sets)

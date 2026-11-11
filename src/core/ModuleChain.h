@@ -49,6 +49,7 @@ public:
     bool isReordering() const noexcept { return phase != Phase::idle; }
 
     void setModuleBypassed (ModuleId id, bool shouldBeBypassed) noexcept;
+    void setModuleParameters (const ModuleParameters& parameters) noexcept;
     void setMinimumOversamplingIndex (int index) noexcept;
 
     /** Module of the active set (for state queries; process() owns it on the audio thread). */

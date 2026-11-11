@@ -65,7 +65,7 @@ std::vector<double> runImpulse (const DigitalBand& band, int length)
     cascade.setCoefficients (band);
     std::vector<double> out ((size_t) length);
     for (int i = 0; i < length; ++i)
-        out[(size_t) i] = cascade.processSample (i == 0 ? 1.0f : 0.0f, 0);
+        out[(size_t) i] = cascade.processSample (i == 0 ? 1.0f : 0.0f);
     return out;
 }
 } // namespace

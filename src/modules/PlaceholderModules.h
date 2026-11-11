@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/ModuleBase.h"
+#include "modules/eq/EqModule.h"
 
 #include <memory>
 
@@ -34,9 +35,11 @@ constexpr bool moduleUsesOversampling (ModuleId id) noexcept
     return id != ModuleId::eq;
 }
 
-/** Creates the production module for each slot. */
+/** Creates the production module for each slot: the real ones so far, placeholders for the rest. */
 inline std::unique_ptr<ModuleBase> createModule (ModuleId id)
 {
+    if (id == ModuleId::eq)
+        return std::make_unique<eq::EqModule>();
     return std::make_unique<PlaceholderModule> (id, moduleUsesOversampling (id));
 }
 

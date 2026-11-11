@@ -85,7 +85,9 @@ void PMelodiesProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         }
     }
 
-    engine.process (mainBuffer, sidechain, reader.read(), isNonRealtime());
+    auto parameters = reader.read();
+    parameters.modules.eq.soloBand = eqSoloBand.load();
+    engine.process (mainBuffer, sidechain, parameters, isNonRealtime());
 
     // Any output channel beyond the main bus carries nothing.
     for (auto ch = getMainBusNumOutputChannels(); ch < buffer.getNumChannels(); ++ch)

@@ -68,6 +68,13 @@ public:
     ModuleId getSelectedModule() const;
     void setSelectedModule (ModuleId id);
 
+    /**
+        Band heard in solo in the EQ (-1 for none). Interface state, not a plugin parameter: it is
+        not automated and not saved (§12). Any thread.
+    */
+    void setEqSoloBand (int band) noexcept { eqSoloBand.store (band); }
+    int getEqSoloBand() const noexcept { return eqSoloBand.load(); }
+
     /** Reported latency in milliseconds, for the footer. */
     double getLatencyMilliseconds() const noexcept;
 
@@ -78,6 +85,7 @@ private:
     static BusesProperties makeBusesProperties();
 
     juce::AudioProcessorValueTreeState state;
+    std::atomic<int> eqSoloBand { -1 };
     param::ParameterReader reader;
     AudioEngine engine;
 
