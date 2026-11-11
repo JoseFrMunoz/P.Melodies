@@ -283,7 +283,14 @@ Todo lo que comparten los módulos. Si falla aquí, fallaría en los cuatro.
 
 ### Fase 1 — EQ
 Sección 4 completa, DSP e interfaz.
-- **Estado:** empezada el 2026-11-11. P.P. aprobó todas las recomendaciones de las preguntas del módulo (§12, filas «EQ: …»).
+- **Estado:** hecha y en verde en el CI (2026-11-11). Pendiente de las pruebas de P.P. en FL Studio y de su visto bueno. P.P. aprobó todas las recomendaciones de las preguntas del módulo (§12, filas «EQ: …»).
+- **Cómo quedó** (detalle del DSP en `docs/dsp/eq.md`):
+  - Filtros ajustados a la curva analógica hasta Nyquist: en bandas típicas, menos de 0,3 dB hasta fs/4 en campanas, shelves y tilt.
+  - Proceso con SVF TPT; en los deslizamientos, coeficientes en rampa muestra a muestra, sin *zipper*.
+  - Cambios de forma con calentamiento y fundido cruzado; encender, apagar o borrar una banda, con fundido de 20 ms.
+  - Carácter Subtle y Warm por residuo, con pre- y de-énfasis.
+  - Interfaz con la gráfica, el editor de banda y el analizador de la pantalla 01.
+  - CPU (Xeon de 2,1 GHz): el EQ con 8 bandas, dos cortes de 96 dB/oct y Warm usa el 0,8 % de un núcleo; con todas las frecuencias automatizadas, el 4,5 %.
 - **Referencias:** manual de Pro-Q 4 (sus modos de carácter son los de §4) y, como apoyo, el de Pro-Q 3.
 - **Diseño preparado para la ampliación pendiente de §13** (tipo Volcano), sin implementarla:
   - Cada banda es un objeto independiente con su propia ruta de proceso.
