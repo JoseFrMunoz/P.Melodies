@@ -157,19 +157,8 @@ void ModuleRow::mouseUp (const juce::MouseEvent& e)
 }
 
 //==============================================================================
-ChainPanel::ChainPanel (juce::RangedAudioParameter& orderParameter,
-                        const std::array<juce::RangedAudioParameter*, numModules>& enabledParameters)
-    : orderAttachment (orderParameter,
-                       [this] (float v)
-                       {
-                           order = chain::decode (juce::roundToInt (v));
-                           if (draggedRow != nullptr) // the host moved things mid-drag: keep holding the same module
-                               dragFromPosition = chain::positionOf (order, draggedRow->getId());
-                           updateTargets (rowsPlaced);
-                       },
-                       nullptr),
-      order (chain::decode (chain::defaultOrderIndex)),
-      vblank (this, [this] (double timestampSeconds) { frame (timestampSeconds); })
+ChainPanel::ChainPanel (const std::array<juce::RangedAudioParameter*, numModules>& enabledParameters)
+    : vblank (this, [this] (double timestampSeconds) { frame (timestampSeconds); })
 {
     for (int i = 0; i < numModules; ++i)
     {
@@ -178,8 +167,18 @@ ChainPanel::ChainPanel (juce::RangedAudioParameter& orderParameter,
     }
 
     setTitle (text ("Cadena de se\xc3\xb1" "al"));
-    orderAttachment.sendInitialUpdate();
     setSelectedModule (ModuleId::eq);
+}
+
+void ChainPanel::setOrder (const chain::Order& newOrder)
+{
+    if (newOrder == order || ! chain::isValid (newOrder))
+        return;
+
+    order = newOrder;
+    if (draggedRow != nullptr) // changed from outside mid-drag: keep holding the same module
+        dragFromPosition = chain::positionOf (order, draggedRow->getId());
+    updateTargets (rowsPlaced);
 }
 
 ChainPanel::~ChainPanel() = default;
@@ -373,7 +372,9 @@ void ChainPanel::moveModule (int fromPosition, int toPosition)
         return;
 
     const auto newOrder = chain::move (order, fromPosition, toPosition);
-    orderAttachment.setValueAsCompleteGesture ((float) chain::encode (newOrder));
+    setOrder (newOrder);
+    if (onOrderChanged)
+        onOrderChanged (newOrder);
 }
 
 void ChainPanel::paint (juce::Graphics& g)

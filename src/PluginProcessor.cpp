@@ -24,6 +24,45 @@ PMelodiesProcessor::PMelodiesProcessor()
       reader (state)
 {
     applyEqAnalyzer();
+    state.state.setProperty (chainOrderProperty, chain::toText (chain::defaultOrder()), nullptr);
+    state.state.addListener (this);
+}
+
+static_assert (std::atomic<std::uint64_t>::is_always_lock_free);
+
+PMelodiesProcessor::~PMelodiesProcessor()
+{
+    state.state.removeListener (this);
+}
+
+EngineParameters PMelodiesProcessor::readEngineParameters() const noexcept
+{
+    auto p = reader.read();
+    p.chainOrder = chain::unpack (packedChainOrder.load());
+    p.modules.eq.soloBand = eqSoloBand.load();
+    return p;
+}
+
+void PMelodiesProcessor::setChainOrder (const chain::Order& order)
+{
+    if (chain::isValid (order))
+        state.state.setProperty (chainOrderProperty, chain::toText (order), nullptr); // syncs through the listener
+}
+
+void PMelodiesProcessor::syncChainOrder()
+{
+    packedChainOrder.store (chain::pack (chain::fromText (state.state.getProperty (chainOrderProperty).toString())));
+}
+
+void PMelodiesProcessor::valueTreePropertyChanged (juce::ValueTree& tree, const juce::Identifier& property)
+{
+    if (tree == state.state && property == chainOrderProperty)
+        syncChainOrder();
+}
+
+void PMelodiesProcessor::valueTreeRedirected (juce::ValueTree&)
+{
+    syncChainOrder(); // replaceState(): a project or preset was loaded
 }
 
 const juce::String PMelodiesProcessor::getName() const
@@ -57,7 +96,7 @@ bool PMelodiesProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
 void PMelodiesProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     const auto numChannels = juce::jmax (1, getMainBusNumInputChannels());
-    engine.prepare (sampleRate, samplesPerBlock, numChannels, reader.read());
+    engine.prepare (sampleRate, samplesPerBlock, numChannels, readEngineParameters());
     setLatencySamples (engine.getLatencySamples());
 }
 
@@ -86,9 +125,7 @@ void PMelodiesProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         }
     }
 
-    auto parameters = reader.read();
-    parameters.modules.eq.soloBand = eqSoloBand.load();
-    engine.process (mainBuffer, sidechain, parameters, isNonRealtime());
+    engine.process (mainBuffer, sidechain, readEngineParameters(), isNonRealtime());
 
     // Any output channel beyond the main bus carries nothing.
     for (auto ch = getMainBusNumOutputChannels(); ch < buffer.getNumChannels(); ++ch)
@@ -175,9 +212,22 @@ void PMelodiesProcessor::migrateState (juce::ValueTree& tree, const juce::AudioP
     static const juce::Identifier idProperty { "id" };
     static const juce::Identifier valueProperty { "value" };
 
-    // Version 1 is the first format: nothing to upgrade yet. Future versions add steps here,
-    // e.g. `if (version < 2) { ... }`.
-    [[maybe_unused]] const int version = tree.getProperty (stateVersionProperty, 1);
+    const int version = tree.getProperty (stateVersionProperty, 1);
+
+    // 1 → 2: the chain order was the "chainOrder" parameter, a permutation index from 0 to 23.
+    if (version < 2)
+    {
+        auto legacy = tree.getChildWithProperty (idProperty, "chainOrder");
+        if (legacy.isValid())
+        {
+            const auto order = chain::fromLegacyIndex (juce::roundToInt ((double) legacy.getProperty (valueProperty, 0)));
+            tree.setProperty (chainOrderProperty, chain::toText (order), nullptr);
+            tree.removeChild (legacy, nullptr);
+        }
+    }
+
+    // Normalise the order: unknown modules are dropped and new ones added (chain::fromText).
+    tree.setProperty (chainOrderProperty, chain::toText (chain::fromText (tree.getProperty (chainOrderProperty).toString())), nullptr);
 
     // Parameters added after the state was saved get their default value instead of keeping
     // whatever the instance had before.

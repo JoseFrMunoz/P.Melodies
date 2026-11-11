@@ -12,7 +12,7 @@ src/
     Module.h               Interfaz común de los módulos
     ModuleBase.*           Latencia constante, bypass sin clics, oversampling
     ModuleChain.*          Cadena reordenable con fundido cruzado
-    ChainOrder.*           Orden de la cadena ↔ índice de permutación (0–23)
+    ChainOrder.*           Orden de la cadena: lista de módulos ↔ texto del estado y palabra atómica
     AudioEngine.*          Recorrido completo de la señal (sección global incluida)
     Parameters.*           IDs, rangos y lectura sin bloqueos de los parámetros
     ModuleParameters.h     Instantánea de los ajustes de cada módulo (EQ desde la fase 1)
@@ -81,7 +81,7 @@ Las peticiones que llegan durante el *pre-roll* reinician el cambio con el orden
 - **Audio → interfaz con más datos** (muestras para el analizador, historiales de nivel de las pantallas de los módulos): `dsp::LockFreeFifo`, una cola de un productor y un consumidor sin bloqueos ni reservas de memoria. Si está llena, el audio escribe lo que cabe y sigue: nunca espera a la interfaz.
 - **Analizador del EQ:** `dsp::AnalyzerTap` mete en esa cola la mezcla mono de la entrada (Pre) o la salida (Post) del EQ. Solo empuja el juego de módulos que se oye, así que durante un reordenado la cola sigue teniendo un único productor. La interfaz calcula la FFT a 30 Hz (`ui::SpectrumAnalyser`).
 - **Estado de la interfaz que no es parámetro** (módulo abierto, analizador y escala del EQ): propiedades del `ValueTree` del estado; se guardan con el proyecto. El solo de banda es un atómico del procesador y no se guarda.
-- **Estado:** XML con número de versión (`stateVersion`). `migrateState()` completa los parámetros que falten con su valor por defecto y es el punto donde irán las migraciones futuras.
+- **Estado:** XML con número de versión (`stateVersion`, ahora 2). `migrateState()` completa los parámetros que falten con su valor por defecto y migra los formatos antiguos (versión 1 → 2: el orden de la cadena pasa del parámetro `chainOrder` a la propiedad `chainOrder`). Además de los parámetros, el estado guarda el orden de la cadena (lista de módulos, §12) y el módulo seleccionado.
 
 ## Interfaz
 

@@ -27,7 +27,7 @@ struct EngineParameters
     float clipperCeilingDb = -0.3f;
     int realtimeOversamplingIndex = 1; // factor index: 0 = 1x … 4 = 16x
     int offlineOversamplingIndex = 3;
-    int chainOrder = chain::defaultOrderIndex;
+    chain::Order chainOrder = chain::defaultOrder(); // not a parameter: saved in the state (§12)
     std::array<bool, numModules> moduleEnabled { true, true, true, true };
     bool bypassed = false;
     ModuleParameters modules;

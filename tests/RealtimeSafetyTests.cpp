@@ -59,7 +59,7 @@ TEST_CASE ("processBlock never allocates, whatever the block size and settings",
     // Settings changes happen on another thread in a host; only processing is counted.
     for (int round = 0; round < 30; ++round)
     {
-        setParameter (processor, param::id::chainOrder, (float) (round % 24));
+        processor.setChainOrder (chain::fromLegacyIndex (round % 24));
         setParameter (processor, param::id::compare, (float) (round % 2));
         setParameter (processor, param::id::bypass, (float) ((round / 3) % 2));
         setParameter (processor, param::id::clipperEnabled, (float) ((round / 2) % 2));
@@ -95,7 +95,7 @@ TEST_CASE ("The engine with active oversampling never allocates", "[realtime][ph
 
     for (int round = 0; round < 40; ++round)
     {
-        p.chainOrder = round % 24;
+        p.chainOrder = chain::fromLegacyIndex (round % 24);
         p.realtimeOversamplingIndex = round % 3;
         p.offlineOversamplingIndex = 1 + round % 4;
         p.moduleEnabled[(size_t) (round % numModules)] = round % 2 == 0;

@@ -10,6 +10,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include <atomic>
+#include <cstdint>
 
 namespace pm
 {
@@ -18,11 +19,15 @@ namespace pm
     The JUCE AudioProcessor: owns the parameters and the audio engine, handles bus layouts and
     saves/restores the plugin state in the FL Studio project.
 */
-class PMelodiesProcessor final : public juce::AudioProcessor
+class PMelodiesProcessor final : public juce::AudioProcessor,
+                                 private juce::ValueTree::Listener
 {
 public:
-    /** Version of the saved-state format. Increase it and extend migrateState() when it changes. */
-    static constexpr int stateVersion = 1;
+    /**
+        Version of the saved-state format. Increase it and extend migrateState() when it changes.
+        2: the chain order moved from the "chainOrder" parameter to the chainOrder property.
+    */
+    static constexpr int stateVersion = 2;
 
     static inline const juce::Identifier stateType { "PMelodiesState" };
     static inline const juce::Identifier stateVersionProperty { "stateVersion" };
@@ -30,6 +35,7 @@ public:
     static inline const juce::Identifier selectedModuleProperty { "selectedModule" };
     static inline const juce::Identifier eqAnalyzerProperty { "eqAnalyzer" };
     static inline const juce::Identifier eqRangeProperty { "eqRange" };
+    static inline const juce::Identifier chainOrderProperty { "chainOrder" };
 
     /** EQ analyser source, as in the selector: Pre, Post or Off. */
     enum class EqAnalyzer
@@ -40,7 +46,7 @@ public:
     };
 
     PMelodiesProcessor();
-    ~PMelodiesProcessor() override = default;
+    ~PMelodiesProcessor() override;
 
     // AudioProcessor
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -79,6 +85,14 @@ public:
     void setSelectedModule (ModuleId id);
 
     /**
+        Order of the module chain. It is part of the state (projects, and presets and undo from
+        phase 5) but not an automatable parameter (§12, 2026-11-11). Set it on the message thread;
+        it reaches the audio thread lock-free and the chain crossfades to it without clicks.
+    */
+    chain::Order getChainOrder() const noexcept { return chain::unpack (packedChainOrder.load()); }
+    void setChainOrder (const chain::Order& order);
+
+    /**
         EQ display settings (§12): saved with the project, not plugin parameters, and loading a
         preset does not change them. Message thread.
     */
@@ -104,10 +118,20 @@ private:
     static BusesProperties makeBusesProperties();
     void applyEqAnalyzer();
 
+    /** Parameters plus the chain order and the EQ solo band, as the engine reads them each block. */
+    EngineParameters readEngineParameters() const noexcept;
+
+    /** Copies the order from the state tree to the audio thread. */
+    void syncChainOrder();
+
+    void valueTreePropertyChanged (juce::ValueTree& tree, const juce::Identifier& property) override;
+    void valueTreeRedirected (juce::ValueTree& tree) override;
+
     juce::AudioProcessorValueTreeState state;
     std::atomic<int> eqSoloBand { -1 };
     param::ParameterReader reader;
     AudioEngine engine;
+    std::atomic<std::uint64_t> packedChainOrder { chain::pack (chain::defaultOrder()) };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PMelodiesProcessor)
 };

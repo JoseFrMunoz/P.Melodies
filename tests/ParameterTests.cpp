@@ -44,8 +44,10 @@ TEST_CASE ("Every parameter is automatable, uniquely identified and readable", "
         CHECK (ranged->getVersionHint() == param::versionHint);
     }
 
-    // 14 global and chain parameters (phase 0) + the EQ: character and 7 per band (phase 1).
-    CHECK (ids.size() == 14 + 1 + 7 * eq::numBands);
+    // 13 global and chain parameters (phase 0; the chain order is not a parameter, §12)
+    // + the EQ: character and 7 per band (phase 1).
+    CHECK (ids.size() == 13 + 1 + 7 * eq::numBands);
+    CHECK_FALSE (ids.contains ("chainOrder"));
     CHECK (processor.getBypassParameter() == processor.getState().getParameter (param::id::bypass));
 }
 
@@ -78,8 +80,6 @@ TEST_CASE ("Global parameter ranges and defaults follow the specification", "[pa
 
     CHECK (get (processor, param::id::qualityRealtime).getCurrentValueAsText() == "2x");
     CHECK (get (processor, param::id::qualityOffline).getCurrentValueAsText() == "8x");
-    CHECK (get (processor, param::id::chainOrder).getCurrentValueAsText() == "EQ > Comp > Sat > Dist");
-    CHECK (get (processor, param::id::chainOrder).getNumSteps() == 24);
 
     for (int i = 0; i < numModules; ++i)
         CHECK (get (processor, param::moduleEnabledId (moduleAt (i))).getDefaultValue() == 1.0f);
@@ -98,7 +98,8 @@ TEST_CASE ("Default parameters give the neutral engine settings", "[parameters][
     CHECK (p.clipperEnabled);
     CHECK (p.realtimeOversamplingIndex == 1); // 2x
     CHECK (p.offlineOversamplingIndex == 3);  // 8x
-    CHECK (p.chainOrder == 0);
+    CHECK (p.chainOrder == chain::defaultOrder());
+    CHECK (processor.getChainOrder() == chain::defaultOrder());
     CHECK_FALSE (p.bypassed);
 }
 
@@ -125,7 +126,6 @@ TEST_CASE ("Quality and clipper settings are kept out of presets", "[parameters]
     CHECK (param::isExcludedFromPresets (param::id::qualityOffline));
     CHECK (param::isExcludedFromPresets (param::id::clipperEnabled));
     CHECK (param::isExcludedFromPresets (param::id::clipperCeiling));
-    CHECK_FALSE (param::isExcludedFromPresets (param::id::chainOrder));
     CHECK_FALSE (param::isExcludedFromPresets (param::id::mix));
 }
 

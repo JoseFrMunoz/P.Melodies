@@ -62,14 +62,13 @@ private:
 
     Reordering is live: while a row is dragged by its handle, the other rows slide out of the way
     to the places they will take, so the gap always shows where it will land. On release the row
-    glides into that gap and the new order is sent to the plugin as one gesture. Rows also glide
-    when the order changes from outside (host automation, and presets and undo in phase 5).
+    glides into that gap and the new order is sent to the plugin (onOrderChanged). Rows also glide
+    when the order changes from outside (setOrder(): projects, and presets and undo in phase 5).
 */
 class ChainPanel final : public juce::Component
 {
 public:
-    ChainPanel (juce::RangedAudioParameter& orderParameter,
-                const std::array<juce::RangedAudioParameter*, numModules>& enabledParameters);
+    explicit ChainPanel (const std::array<juce::RangedAudioParameter*, numModules>& enabledParameters);
     ~ChainPanel() override;
 
     std::function<void (ModuleId)> onModuleSelected;
@@ -80,6 +79,12 @@ public:
 
     /** Repaints the rows whose status changed. */
     void refreshStatus();
+
+    /** The user dropped a module somewhere new. */
+    std::function<void (const chain::Order&)> onOrderChanged;
+
+    /** Order from the plugin. The rows glide to it (they jump before the first layout). */
+    void setOrder (const chain::Order& newOrder);
 
     void setSelectedModule (ModuleId id);
     ModuleId getSelectedModule() const noexcept { return selectedModule; }
@@ -107,7 +112,7 @@ public:
     bool isDragging() const noexcept { return draggedRow != nullptr; }
     ModuleRow* getDraggedRow() const noexcept { return draggedRow; }
 
-    /** Applies a move to the order parameter as one gesture (used on release and by tests). */
+    /** Applies a move and reports it through onOrderChanged (used on release and by tests). */
     void moveModule (int fromPosition, int toPosition);
 
     /**
@@ -128,8 +133,7 @@ private:
     void placeRow (ModuleRow& row);
     void frame (double timestampSeconds);
 
-    juce::ParameterAttachment orderAttachment;
-    chain::Order order;
+    chain::Order order = chain::defaultOrder();
     std::array<std::unique_ptr<ModuleRow>, numModules> rows;
     ModuleId selectedModule = ModuleId::eq;
 

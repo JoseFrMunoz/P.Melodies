@@ -40,6 +40,9 @@ public:
 
     void selectModule (ModuleId id);
 
+    /** Follows the plugin (meters, chain order…). The timer calls it 30 times a second; public for tests. */
+    void refresh();
+
     // Access for tests and screenshots.
     ui::ChainPanel& getChainPanel() noexcept { return chainPanel; }
     ui::ModulePanel& getModulePanel() noexcept { return modulePanel; }

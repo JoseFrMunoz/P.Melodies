@@ -23,7 +23,7 @@ std::array<juce::RangedAudioParameter*, numModules> enabledParameters (PMelodies
 PMelodiesEditor::PMelodiesEditor (PMelodiesProcessor& p)
     : juce::AudioProcessorEditor (p),
       processor (p),
-      chainPanel (*p.getState().getParameter (param::id::chainOrder), enabledParameters (p)),
+      chainPanel (enabledParameters (p)),
       modulePanel (p),
       footer (p)
 {
@@ -40,6 +40,8 @@ PMelodiesEditor::PMelodiesEditor (PMelodiesProcessor& p)
         const auto bands = modulePanel.getEqPanel().getController().getNumActiveBands();
         return bands == 0 ? juce::String ("Sin bandas") : juce::String (bands) + (bands == 1 ? " banda" : " bandas");
     };
+    chainPanel.setOrder (processor.getChainOrder());
+    chainPanel.onOrderChanged = [this] (const chain::Order& order) { processor.setChainOrder (order); };
 
     addAndMakeVisible (header);
     addAndMakeVisible (chainPanel);
@@ -130,12 +132,18 @@ bool PMelodiesEditor::keyPressed (const juce::KeyPress& key)
 
 void PMelodiesEditor::timerCallback()
 {
+    refresh();
+}
+
+void PMelodiesEditor::refresh()
+{
     const auto now = juce::Time::getMillisecondCounterHiRes();
     const auto elapsed = juce::jlimit (0.0, 0.25, (now - lastRefresh) * 0.001);
     lastRefresh = now;
     footer.refresh (elapsed);
     modulePanel.refresh();
     chainPanel.refreshStatus();
+    chainPanel.setOrder (processor.getChainOrder()); // a project loaded while open: the rows glide
 }
 
 } // namespace pm

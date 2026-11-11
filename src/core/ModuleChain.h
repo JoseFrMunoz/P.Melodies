@@ -40,11 +40,15 @@ public:
     /** Sum of the module latencies. Constant between prepare() calls and independent of the order. */
     int getLatencySamples() const noexcept { return latency; }
 
-    /** Requests a new order (permutation index). Applied by the next process() call. */
-    void setOrder (int orderIndex) noexcept { requestedOrder = juce::jlimit (0, chain::numOrders - 1, orderIndex); }
+    /** Requests a new order. Applied by the next process() call; an invalid order is ignored. */
+    void setOrder (const chain::Order& order) noexcept
+    {
+        if (chain::isValid (order))
+            requestedOrder = order;
+    }
 
     /** Order currently heard (the target order once a crossfade has finished). */
-    int getActiveOrder() const noexcept { return activeOrder; }
+    const chain::Order& getActiveOrder() const noexcept { return activeOrder; }
 
     bool isReordering() const noexcept { return phase != Phase::idle; }
 
@@ -71,15 +75,15 @@ private:
 
     using ModuleSet = std::array<std::unique_ptr<ModuleBase>, numModules>;
 
-    void runSet (int setIndex, int orderIndex, juce::dsp::AudioBlock<float> block, const SidechainBlock* sidechain) noexcept;
+    void runSet (int setIndex, const chain::Order& order, juce::dsp::AudioBlock<float> block, const SidechainBlock* sidechain) noexcept;
     void beginTransition() noexcept;
 
     std::array<ModuleSet, 2> sets;
     int activeSet = 0;
 
-    int requestedOrder = chain::defaultOrderIndex;
-    int activeOrder = chain::defaultOrderIndex;
-    int targetOrder = chain::defaultOrderIndex;
+    chain::Order requestedOrder = chain::defaultOrder();
+    chain::Order activeOrder = chain::defaultOrder();
+    chain::Order targetOrder = chain::defaultOrder();
 
     Phase phase = Phase::idle;
     int preRollRemaining = 0;
