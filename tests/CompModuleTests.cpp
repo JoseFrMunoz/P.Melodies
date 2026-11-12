@@ -249,7 +249,7 @@ TEST_CASE ("Compressor module: the lookahead reacts before the transient arrives
         const auto step = (int) (0.3 * fs);
         const auto loud = tone (1000.0, 0.0, 0.3, fs);
         for (int ch = 0; ch < 2; ++ch)
-            input.copyFrom (ch, step, loud, ch, step, input.getNumSamples() - step);
+            input.copyFrom (ch, step, loud, ch, 0, input.getNumSamples() - step); // same phase: 300 whole periods
         const auto output = rig.run (input);
         // Loudest sample in the first millisecond of the transient at the output.
         const auto at = step + rig.latency();
