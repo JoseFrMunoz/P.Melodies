@@ -311,6 +311,7 @@ Sección 4 completa, DSP e interfaz.
 
 ### Fase 2 — Compresor
 Sección 5 completa.
+- **Estado:** empezada el 2026-11-12 en `phase/2-compressor` (sale de `phase/1-eq`). Leídas §5, la pantalla 02 y el manual de Pro-C 2; preguntas enviadas a P.P. Sin programar hasta sus respuestas.
 - **Referencias:** manual de Pro-C 2 (sus 8 estilos son los de §5). El de Pro-C 3 solo como contexto: lo que añade queda fuera de la especificación.
 - El gráfico de niveles recibe sus datos por la cola sin bloqueos de la fase 0.
 - **Tests:**
