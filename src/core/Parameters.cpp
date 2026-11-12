@@ -43,6 +43,41 @@ std::unique_ptr<juce::AudioParameterBool> makeBool (const juce::String& paramete
 }
 
 juce::String text (const char* utf8) { return juce::String (juce::CharPointer_UTF8 (utf8)); }
+
+/** Rounded to four significant digits: saving and loading a project gives back exactly the same value. */
+float significant (double x)
+{
+    if (! (x > 0.0))
+        return (float) x;
+    const auto magnitude = std::pow (10.0, std::floor (std::log10 (x)) - 3.0);
+    return (float) (std::round (x / magnitude) * magnitude);
+}
+
+/** Logarithmic range (frequencies, Q, times), with values rounded by significant(). */
+juce::NormalisableRange<float> logRange (float start, float end)
+{
+    return juce::NormalisableRange<float> (
+        start, end,
+        [] (float s, float e, float v) { return juce::jlimit (s, e, significant (s * std::pow ((double) e / s, (double) v))); },
+        [] (float s, float e, float x) { return (float) (std::log ((double) juce::jlimit (s, e, x) / s) / std::log ((double) e / s)); },
+        [] (float s, float e, float x) { return juce::jlimit (s, e, significant (x)); });
+}
+
+std::unique_ptr<juce::AudioParameterFloat> makeFloat (const juce::String& parameterId, const juce::String& name,
+                                                      juce::NormalisableRange<float> range, float defaultValue,
+                                                      const juce::String& unit,
+                                                      std::function<juce::String (float)> toText,
+                                                      std::function<float (const juce::String&)> fromText)
+{
+    auto attributes = juce::AudioParameterFloatAttributes()
+                          .withLabel (unit)
+                          .withStringFromValueFunction ([toText] (float v, int) { return toText (v); })
+                          .withValueFromStringFunction ([fromText] (const juce::String& t) { return fromText (t); });
+
+    return std::make_unique<juce::AudioParameterFloat> (pid (parameterId), name, range, defaultValue, attributes);
+}
+
+float parseNumberText (const juce::String& t) { return (float) format::parseNumber (t); }
 } // namespace
 
 const char* moduleEnabledId (ModuleId moduleId) noexcept
@@ -84,6 +119,60 @@ juce::StringArray eqSlopeNames()
 
 juce::StringArray eqCharacterNames() { return { "Clean", "Subtle", "Warm" }; }
 
+juce::StringArray compStyleNames() { return { "Clean", "Classic", "Opto", "Vocal", "Mastering", "Bus", "Punch", "Pumping" }; }
+juce::StringArray compSidechainNames() { return { "Interno", "Externo" }; }
+juce::StringArray compOversamplingNames() { return { "Off", "2x", "4x" }; }
+
+juce::StringArray compressorIds()
+{
+    return { id::compStyle,     id::compThreshold, id::compRatio,       id::compKnee,         id::compRange,
+             id::compAttack,    id::compRelease,   id::compAutoRelease, id::compLookahead,    id::compHold,
+             id::compMakeup,    id::compAutoGain,  id::compMix,         id::compSidechain,    id::compOversampling,
+             id::compScHpOn,    id::compScHpFreq,  id::compScHpSlope,   id::compScLpOn,       id::compScLpFreq,
+             id::compScLpSlope, id::compScBellOn,  id::compScBellFreq,  id::compScBellGain,   id::compScBellQ };
+}
+
+juce::NormalisableRange<float> compRatioRange()
+{
+    // Normalised 0 … 0.96: 1:1 … 100:1, logarithmic with 4:1 near the middle; above 0.98: ∞:1.
+    static constexpr double finiteEnd = 0.96;
+    static constexpr double infiniteStart = 0.98;
+    static constexpr double skew = 1.84;
+    const auto finiteMax = (float) dsp::comp::maxFiniteRatio;
+    const auto infinite = (float) dsp::comp::infiniteRatio;
+
+    const auto snap = [finiteMax, infinite] (float x)
+    {
+        if (x >= 0.5f * (finiteMax + infinite))
+            return infinite;
+        if (x >= finiteMax)
+            return finiteMax;
+        const auto decimals = x < 10.0f ? 100.0f : 10.0f;
+        return juce::jmax (1.0f, std::round (x * decimals) / decimals);
+    };
+
+    return juce::NormalisableRange<float> (
+        1.0f, infinite,
+        [snap, finiteMax, infinite] (float, float, float v)
+        {
+            if (v > infiniteStart)
+                return infinite;
+            if (v >= finiteEnd)
+                return finiteMax;
+            return snap ((float) std::pow ((double) finiteMax, std::pow (juce::jmax (0.0, (double) v / finiteEnd), skew)));
+        },
+        [finiteMax, infinite] (float, float, float x)
+        {
+            if (x >= infinite)
+                return 1.0f;
+            if (x >= finiteMax)
+                return (float) finiteEnd;
+            const auto position = std::log (juce::jmax (1.0, (double) x)) / std::log ((double) finiteMax);
+            return (float) (finiteEnd * std::pow (position, 1.0 / skew));
+        },
+        [snap] (float, float, float x) { return snap (x); });
+}
+
 juce::StringArray realtimeQualityChoices() { return { "Off", "2x", "4x" }; }
 juce::StringArray offlineQualityChoices() { return { "2x", "4x", "8x", "16x" }; }
 
@@ -111,22 +200,8 @@ Apvts::ParameterLayout createLayout()
                        makeBool (id::saturationEnabled, text ("Saturaci\xc3\xb3n encendida"), true, "Encendida", "Apagada"),
                        makeBool (id::distortionEnabled, text ("Distorsi\xc3\xb3n encendida"), true, "Encendida", "Apagada"));
 
-    // EQ: eight band slots and the character (§4, §12). Frequency and Q use logarithmic ranges,
-    // rounded to four significant digits so that saving and loading a project gives back exactly
-    // the same values (the pow/log round trip alone changes the last decimals).
-    const auto significant = [] (double x)
-    {
-        const auto magnitude = std::pow (10.0, std::floor (std::log10 (x)) - 3.0);
-        return (float) (std::round (x / magnitude) * magnitude);
-    };
-    const auto logRange = [significant] (float start, float end)
-    {
-        return juce::NormalisableRange<float> (
-            start, end,
-            [significant] (float s, float e, float v) { return juce::jlimit (s, e, significant (s * std::pow ((double) e / s, (double) v))); },
-            [] (float s, float e, float x) { return (float) (std::log ((double) juce::jlimit (s, e, x) / s) / std::log ((double) e / s)); },
-            [significant] (float s, float e, float x) { return juce::jlimit (s, e, significant (x)); });
-    };
+    // EQ: eight band slots and the character (§4, §12). Frequency and Q use logarithmic ranges
+    // (logRange(): four significant digits, so projects reload exactly).
 
     auto eqGroup = std::make_unique<juce::AudioProcessorParameterGroup> ("eq", "EQ", " | ");
     eqGroup->addChild (std::make_unique<juce::AudioParameterChoice> (pid (id::eqCharacter), text ("EQ \xc2\xb7 Car\xc3\xa1" "cter"),
@@ -164,8 +239,72 @@ Apvts::ParameterLayout createLayout()
             makeBool (bandId (EqField::bypass), prefix + "Bypass", false, "Activado", "Desactivado"));
     }
 
+    // Compressor (§5, §12): neutral defaults, so it does nothing until the threshold goes down.
+    auto compGroup = std::make_unique<juce::AudioProcessorParameterGroup> ("comp", "Compresor", " | ");
+    {
+        const auto prefix = text ("Compresor \xc2\xb7 ");
+        const auto sidechain = prefix + text ("Sidechain \xc2\xb7 ");
+        const auto decibels = [] (float v) { return format::number (v, 1); };
+        const auto parseTime = [] (const juce::String& t) { return (float) format::parseMilliseconds (t); };
+        const auto hertz = [] (float v) { return format::frequency (v); };
+        const auto parseHertz = [] (const juce::String& t) { return (float) format::parseFrequency (t); };
+        const auto plain = [] (float v) { return format::compact (v, 2); };
+
+        compGroup->addChild (
+            std::make_unique<juce::AudioParameterChoice> (pid (id::compStyle), prefix + "Estilo", compStyleNames(), 0),
+            makeFloat (id::compThreshold, prefix + "Threshold",
+                       { (float) dsp::comp::minThresholdDb, (float) dsp::comp::maxThresholdDb, 0.1f }, 0.0f, "dB",
+                       decibels, parseNumberText),
+            makeFloat (id::compRatio, prefix + "Ratio", compRatioRange(), 4.0f, "",
+                       [] (float v) { return format::ratio (v, dsp::comp::infiniteRatio); },
+                       [] (const juce::String& t) { return (float) format::parseRatio (t, dsp::comp::infiniteRatio); }),
+            makeFloat (id::compKnee, prefix + "Knee", { 0.0f, (float) dsp::comp::maxKneeDb, 0.1f }, 0.0f, "dB",
+                       decibels, parseNumberText),
+            makeFloat (id::compRange, prefix + "Range", { 0.0f, (float) dsp::comp::maxRangeDb, 0.1f }, 60.0f, "dB",
+                       decibels, parseNumberText),
+            makeFloat (id::compAttack, prefix + "Attack",
+                       logRange ((float) dsp::comp::minAttackMs, (float) dsp::comp::maxAttackMs), 10.0f, "ms",
+                       [] (float v) { return format::compact (v, v < 0.1f ? 3 : v < 1.0f ? 2 : v < 10.0f ? 1 : 0); },
+                       parseTime),
+            makeFloat (id::compRelease, prefix + "Release",
+                       logRange ((float) dsp::comp::minReleaseMs, (float) dsp::comp::maxReleaseMs), 120.0f, "ms",
+                       [] (float v) { return format::compact (v, 0); }, parseTime),
+            makeBool (id::compAutoRelease, prefix + "Auto-release", false, "Activado", "Desactivado"),
+            makeFloat (id::compLookahead, prefix + "Lookahead", { 0.0f, (float) dsp::comp::maxLookaheadMs, 0.01f }, 0.0f,
+                       "ms", [] (float v) { return format::compact (v, 2); }, parseTime),
+            makeFloat (id::compHold, prefix + "Hold", { 0.0f, (float) dsp::comp::maxHoldMs, 0.1f, 0.35f }, 0.0f, "ms",
+                       [] (float v) { return format::compact (v, v < 10.0f ? 1 : 0); }, parseTime),
+            makeFloat (id::compMakeup, prefix + "Makeup",
+                       { (float) dsp::comp::minMakeupDb, (float) dsp::comp::maxMakeupDb, 0.1f }, 0.0f, "dB",
+                       decibels, parseNumberText),
+            makeBool (id::compAutoGain, prefix + "Auto-gain", false, "Activado", "Desactivado"),
+            makeFloat (id::compMix, prefix + "Mix", { 0.0f, 100.0f, 0.1f }, 100.0f, "%",
+                       [] (float v) { return format::number (v, 0); }, parseNumberText),
+            std::make_unique<juce::AudioParameterChoice> (pid (id::compSidechain), prefix + "Sidechain", compSidechainNames(), 0),
+            std::make_unique<juce::AudioParameterChoice> (pid (id::compOversampling), prefix + "Oversampling",
+                                                          compOversamplingNames(), 0),
+            makeBool (id::compScHpOn, sidechain + "Pasa-altos", true, "Activado", "Desactivado"),
+            makeFloat (id::compScHpFreq, sidechain + text ("Pasa-altos \xc2\xb7 Frecuencia"),
+                       logRange (comp::sidechainHighPassMin, comp::sidechainHighPassMax), 80.0f, "Hz", hertz, parseHertz),
+            std::make_unique<juce::AudioParameterChoice> (pid (id::compScHpSlope), sidechain + text ("Pasa-altos \xc2\xb7 Pendiente"),
+                                                          eqSlopeNames(), 3),
+            makeBool (id::compScLpOn, sidechain + "Pasa-bajos", true, "Activado", "Desactivado"),
+            makeFloat (id::compScLpFreq, sidechain + text ("Pasa-bajos \xc2\xb7 Frecuencia"),
+                       logRange (comp::sidechainLowPassMin, comp::sidechainLowPassMax), 20000.0f, "Hz", hertz, parseHertz),
+            std::make_unique<juce::AudioParameterChoice> (pid (id::compScLpSlope), sidechain + text ("Pasa-bajos \xc2\xb7 Pendiente"),
+                                                          eqSlopeNames(), 1),
+            makeBool (id::compScBellOn, sidechain + "Campana", true, "Activada", "Desactivada"),
+            makeFloat (id::compScBellFreq, sidechain + text ("Campana \xc2\xb7 Frecuencia"),
+                       logRange (comp::sidechainBellMin, comp::sidechainBellMax), 1000.0f, "Hz", hertz, parseHertz),
+            makeFloat (id::compScBellGain, sidechain + text ("Campana \xc2\xb7 Ganancia"),
+                       { -comp::sidechainBellMaxGainDb, comp::sidechainBellMaxGainDb, 0.1f }, 0.0f, "dB", decibels,
+                       parseNumberText),
+            makeFloat (id::compScBellQ, sidechain + text ("Campana \xc2\xb7 Q"),
+                       logRange (comp::sidechainBellMinQ, comp::sidechainBellMaxQ), 1.0f, "", plain, parseNumberText));
+    }
+
     Apvts::ParameterLayout layout;
-    layout.add (std::move (global), std::move (modules), std::move (eqGroup));
+    layout.add (std::move (global), std::move (modules), std::move (eqGroup), std::move (compGroup));
     layout.add (makeBool (id::bypass, "Bypass", false, "Activado", "Desactivado"));
     return layout;
 }
@@ -204,6 +343,25 @@ ParameterReader::ParameterReader (Apvts& state)
         band.bypass = field (EqField::bypass);
     }
     eqCharacter = get (id::eqCharacter);
+
+    comp.style = get (id::compStyle);
+    comp.threshold = get (id::compThreshold);
+    comp.ratio = get (id::compRatio);
+    comp.knee = get (id::compKnee);
+    comp.range = get (id::compRange);
+    comp.attack = get (id::compAttack);
+    comp.release = get (id::compRelease);
+    comp.autoRelease = get (id::compAutoRelease);
+    comp.lookahead = get (id::compLookahead);
+    comp.hold = get (id::compHold);
+    comp.makeup = get (id::compMakeup);
+    comp.autoGain = get (id::compAutoGain);
+    comp.mix = get (id::compMix);
+    comp.sidechain = get (id::compSidechain);
+    comp.oversampling = get (id::compOversampling);
+    comp.highPass = { get (id::compScHpOn), get (id::compScHpFreq), get (id::compScHpSlope), nullptr, nullptr };
+    comp.lowPass = { get (id::compScLpOn), get (id::compScLpFreq), get (id::compScLpSlope), nullptr, nullptr };
+    comp.bell = { get (id::compScBellOn), get (id::compScBellFreq), nullptr, get (id::compScBellGain), get (id::compScBellQ) };
 }
 
 EngineParameters ParameterReader::read() const noexcept
@@ -238,6 +396,27 @@ EngineParameters ParameterReader::read() const noexcept
         band.settings.slopeIndex = choice (source.slope, (int) dsp::eq::slopesDbPerOctave.size());
     }
     p.modules.eq.character = (eq::Character) choice (eqCharacter, eq::numCharacters);
+
+    auto& c = p.modules.comp;
+    const auto numSlopes = (int) dsp::eq::slopesDbPerOctave.size();
+    c.style = (dsp::comp::Style) choice (comp.style, dsp::comp::numStyles);
+    c.thresholdDb = comp.threshold->load();
+    c.ratio = comp.ratio->load();
+    c.kneeDb = comp.knee->load();
+    c.rangeDb = comp.range->load();
+    c.attackMs = comp.attack->load();
+    c.releaseMs = comp.release->load();
+    c.autoRelease = flag (comp.autoRelease);
+    c.lookaheadMs = comp.lookahead->load();
+    c.holdMs = comp.hold->load();
+    c.makeupDb = comp.makeup->load();
+    c.autoGain = flag (comp.autoGain);
+    c.mix = comp.mix->load() / 100.0f;
+    c.externalSidechain = choice (comp.sidechain, 2) == 1;
+    c.oversamplingIndex = choice (comp.oversampling, 3);
+    c.highPass = { flag (comp.highPass.on), comp.highPass.frequency->load(), 0.0f, 1.0f, choice (comp.highPass.slope, numSlopes) };
+    c.lowPass = { flag (comp.lowPass.on), comp.lowPass.frequency->load(), 0.0f, 1.0f, choice (comp.lowPass.slope, numSlopes) };
+    c.bell = { flag (comp.bell.on), comp.bell.frequency->load(), comp.bell.gain->load(), comp.bell.q->load(), 0 };
     return p;
 }
 

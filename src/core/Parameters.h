@@ -31,7 +31,37 @@ inline constexpr const char* saturationEnabled = "saturationEnabled";
 inline constexpr const char* distortionEnabled = "distortionEnabled";
 inline constexpr const char* bypass = "bypass";
 inline constexpr const char* eqCharacter = "eqCharacter";
+
+// Compressor (§5).
+inline constexpr const char* compStyle = "compStyle";
+inline constexpr const char* compThreshold = "compThreshold";
+inline constexpr const char* compRatio = "compRatio";
+inline constexpr const char* compKnee = "compKnee";
+inline constexpr const char* compRange = "compRange";
+inline constexpr const char* compAttack = "compAttack";
+inline constexpr const char* compRelease = "compRelease";
+inline constexpr const char* compAutoRelease = "compAutoRelease";
+inline constexpr const char* compLookahead = "compLookahead";
+inline constexpr const char* compHold = "compHold";
+inline constexpr const char* compMakeup = "compMakeup";
+inline constexpr const char* compAutoGain = "compAutoGain";
+inline constexpr const char* compMix = "compMix";
+inline constexpr const char* compSidechain = "compSidechain";
+inline constexpr const char* compOversampling = "compOversampling";
+inline constexpr const char* compScHpOn = "compScHpOn";
+inline constexpr const char* compScHpFreq = "compScHpFreq";
+inline constexpr const char* compScHpSlope = "compScHpSlope";
+inline constexpr const char* compScLpOn = "compScLpOn";
+inline constexpr const char* compScLpFreq = "compScLpFreq";
+inline constexpr const char* compScLpSlope = "compScLpSlope";
+inline constexpr const char* compScBellOn = "compScBellOn";
+inline constexpr const char* compScBellFreq = "compScBellFreq";
+inline constexpr const char* compScBellGain = "compScBellGain";
+inline constexpr const char* compScBellQ = "compScBellQ";
 } // namespace id
+
+/** Every compressor parameter ID, in the order of the parameter list. */
+juce::StringArray compressorIds();
 
 /** Fields of an EQ band. The IDs are "eqB<n><Field>" with n from 1 to 8, e.g. "eqB3Freq". */
 enum class EqField
@@ -54,6 +84,15 @@ inline constexpr std::array<float, eq::numBands> eqDefaultFrequencies { 50.0f, 1
 juce::StringArray eqTypeNames();
 juce::StringArray eqSlopeNames();
 juce::StringArray eqCharacterNames();
+juce::StringArray compStyleNames();
+juce::StringArray compSidechainNames();       // Interno, Externo
+juce::StringArray compOversamplingNames();    // Off, 2x, 4x
+
+/**
+    Ratio knob: 1:1 to 100:1 on a logarithmic scale with 4:1 near the middle, then ∞:1 at the very
+    end (stored as dsp::comp::infiniteRatio).
+*/
+juce::NormalisableRange<float> compRatioRange();
 
 /** Version hint given to every parameter (JUCE uses it for AU/VST3 parameter ordering). */
 inline constexpr int versionHint = 1;
@@ -106,6 +145,36 @@ private:
     };
     std::array<EqBand, eq::numBands> eqBands {};
     std::atomic<float>* eqCharacter = nullptr;
+
+    struct SidechainFilter
+    {
+        std::atomic<float>* on = nullptr;
+        std::atomic<float>* frequency = nullptr;
+        std::atomic<float>* slope = nullptr; // cuts
+        std::atomic<float>* gain = nullptr;  // bell
+        std::atomic<float>* q = nullptr;     // bell
+    };
+
+    struct Compressor
+    {
+        std::atomic<float>* style = nullptr;
+        std::atomic<float>* threshold = nullptr;
+        std::atomic<float>* ratio = nullptr;
+        std::atomic<float>* knee = nullptr;
+        std::atomic<float>* range = nullptr;
+        std::atomic<float>* attack = nullptr;
+        std::atomic<float>* release = nullptr;
+        std::atomic<float>* autoRelease = nullptr;
+        std::atomic<float>* lookahead = nullptr;
+        std::atomic<float>* hold = nullptr;
+        std::atomic<float>* makeup = nullptr;
+        std::atomic<float>* autoGain = nullptr;
+        std::atomic<float>* mix = nullptr;
+        std::atomic<float>* sidechain = nullptr;
+        std::atomic<float>* oversampling = nullptr;
+        SidechainFilter highPass, lowPass, bell;
+    };
+    Compressor comp;
 };
 
 } // namespace pm::param

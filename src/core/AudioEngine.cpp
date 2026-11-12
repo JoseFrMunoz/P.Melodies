@@ -26,6 +26,11 @@ bool isSettledAt (const juce::SmoothedValue<float, juce::ValueSmoothingTypes::Li
 AudioEngine::AudioEngine (const ModuleChain::Factory& factory) : chain (factory)
 {
     chain.setAnalyzerTap (ModuleId::eq, &eqAnalyzer);
+    chain.forEachModule (ModuleId::compressor, [this] (ModuleBase& module)
+                         {
+                             if (auto* compressor = dynamic_cast<comp::CompressorModule*> (&module))
+                                 compressor->setMeter (&compressorMeter);
+                         });
 }
 
 int AudioEngine::internalBlockSizeFor (int hostBlockSize) noexcept
@@ -48,6 +53,7 @@ void AudioEngine::prepare (double newSampleRate, int hostBlockSize, int numChann
     chain.prepare (spec);
     // A quarter of a second: plenty for an interface that reads 30 times a second.
     eqAnalyzer.prepare (newSampleRate, juce::nextPowerOfTwo ((int) (0.25 * newSampleRate)));
+    compressorMeter.prepare();
 
     const auto latency = chain.getLatencySamples();
     latencySamples.store (latency);

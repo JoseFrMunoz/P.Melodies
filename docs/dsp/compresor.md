@@ -118,7 +118,25 @@ auto-gain = −G(T/2)
 - Respeta el knee, el range y la curva del estilo.
 - El knob Makeup se suma encima.
 
-## 6. Referencias
+## 6. El módulo (`src/modules/comp/CompressorModule.*`)
+
+```
+sidechain (entrada o externo) ─ EQ del sidechain ─ retardo (20 ms − lookahead) ─ detector ─ ganancia
+entrada ─ retardo (20 ms) ─ × ganancia × makeup ─ mezcla con la entrada retrasada ─ [escuchar] ─ salida
+```
+
+- **Latencia constante** (§12): el audio se retrasa siempre el lookahead máximo, 20 ms, y el detector ve la señal *lookahead* ms antes. A eso se suma el oversampling a 16x de `ModuleBase`. Es un retardo puro: con ratio 1:1, un impulso sale exactamente en la latencia declarada, con cualquier lookahead y oversampling (test).
+- **Oversampling:** todo el compresor trabaja a la frecuencia sobremuestreada: Off, 2x o 4x, o la calidad global si es mayor. El sidechain externo se sobremuestrea con los mismos filtros (ver `arquitectura.md`).
+- **EQ del sidechain:** usa los mismos filtros que el EQ (`designBand` y la cascada SVF). Pasa-altos de 20 Hz a 2 kHz y pasa-bajos de 1 a 20 kHz, ambos de 6 a 96 dB/oct, más una campana de ±24 dB con Q de 0,1 a 10.
+  - Por defecto: pasa-altos a 80 Hz y 24 dB/oct; pasa-bajos a 20 kHz y campana a 0 dB, sin efecto (§12, pregunta 8).
+  - **En su posición más alta (20 kHz), el pasa-bajos queda abierto y no filtra.** Un corte tan cerca de Nyquist dejaría una pequeña joroba por debajo: +0,8 dB a 10 kHz con 48 kHz.
+- **Escuchar:** la salida pasa a ser la señal del detector, ya filtrada (interna o externa), con un fundido de 20 ms. No es un parámetro ni se guarda, igual que el solo del EQ.
+- **Mix, makeup y auto-gain:** se deslizan en 20 ms. Mix 0 % devuelve la entrada retrasada, idéntica bit a bit.
+- **En reposo:** si el knee entero queda por encima de 0 dBFS (threshold a 0 dB con knee 0, los valores por defecto), no hay makeup ni escucha, y la reducción ya ha vuelto, la ruta procesada no se calcula y la salida es la entrada retrasada, idéntica bit a bit. Por eso el plugin con los valores por defecto sigue siendo transparente, y ese estado no gasta CPU.
+- **Sidechain externo sin señal:** si se elige «Externo» y no llega nada (por debajo de −100 dBFS durante 0,3 s), no comprime y la interfaz lo indica.
+- **Medidores:** un punto cada 5 ms (pico de entrada, pico de salida y la reducción más profunda), más la reducción y el nivel del detector actuales.
+
+## 7. Referencias
 
 - D. Giannoulis, M. Massberg, J. D. Reiss, "Digital Dynamic Range Compressor Design — A Tutorial and Analysis", *Journal of the Audio Engineering Society* 60(6), 2012 (rodilla suave, detector con ramas suaves, realimentación frente a prealimentación).
 - U. Zölzer (ed.), *DAFX: Digital Audio Effects*, 2.ª ed., Wiley, 2011, cap. 4 (procesadores de dinámica, detectores de pico y RMS).
@@ -128,7 +146,7 @@ auto-gain = −G(T/2)
 - Descripción pública del comportamiento de la célula óptica T4 (release en dos etapas) en la documentación del Teletronix LA-2A.
 - Manual de FabFilter Pro-C 2, solo como referencia de comportamiento (regla 8): nombres de los estilos y qué se espera de cada uno.
 
-## 7. Descripción para el usuario
+## 8. Descripción para el usuario
 
 Texto para el futuro botón de información del módulo (§13, 2026-11-12).
 
@@ -144,3 +162,6 @@ Texto para el futuro botón de información del módulo (§13, 2026-11-12).
 - **Auto-gain:** sube la salida lo que se calcula a partir del threshold, el ratio y el knee, para que los niveles a medio camino entre el threshold y 0 dBFS suenen igual. No sube y baja con la música. El Makeup se suma encima.
 - **Auto-release:** el release se alarga tras compresiones largas y se mantiene corto tras golpes sueltos. El knob Release escala el efecto.
 - **Estéreo:** los dos canales reciben siempre la misma reducción, así que la imagen no se mueve.
+- **Lookahead:** el compresor ve la señal hasta 20 ms antes de que llegue, así que puede reaccionar antes de un golpe. La latencia del plugin es siempre la misma, aunque el lookahead esté a 0.
+- **Sidechain:** por defecto, el compresor escucha la propia señal; con «Externo», la que FL Studio le mande por el sidechain (por ejemplo un bombo). Su EQ quita graves (por defecto, por debajo de 80 Hz), agudos o realza una zona, para que el compresor reaccione a lo que interesa.
+- **Escuchar:** sustituye la salida por lo que oye el compresor, ya filtrado. Un clic lo deja activado; mantenerlo pulsado lo activa solo mientras se pulsa.

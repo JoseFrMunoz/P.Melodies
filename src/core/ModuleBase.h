@@ -34,7 +34,11 @@ namespace pm
 class ModuleBase : public Module
 {
 public:
-    ModuleBase (ModuleId id, bool usesOversampling) noexcept;
+    /**
+        usesSidechain: the module reads the external sidechain in processCore(). It then receives it
+        at the oversampled rate, upsampled with the same filters as the audio (so both stay aligned).
+    */
+    ModuleBase (ModuleId id, bool usesOversampling, bool usesSidechain = false) noexcept;
 
     ModuleId getId() const noexcept { return id; }
 
@@ -77,6 +81,7 @@ public:
     void copyStateFrom (const ModuleBase& other) noexcept;
 
     static constexpr double fadeSeconds = 0.010;
+    static constexpr int maxSidechainChannels = 2;
 
 protected:
     /** Allocate DSP state. Called once per prepare(), for the base rate and the given channel count. */
@@ -104,6 +109,14 @@ protected:
 
     virtual void copyCoreStateFrom (const ModuleBase& /*other*/) noexcept {}
 
+    /**
+        Called at the end of process() on the module set that is heard, at the base rate: the
+        input aligned with the output (the dry path), the output, the host's sidechain and whether
+        processCore() ran in this block. For meters; must not allocate.
+    */
+    virtual void observe (juce::dsp::AudioBlock<const float> /*alignedInput*/, juce::dsp::AudioBlock<const float> /*output*/,
+                          const SidechainBlock* /*sidechain*/, bool /*wetComputed*/) noexcept {}
+
 private:
     enum class Stage
     {
@@ -121,8 +134,10 @@ private:
 
     const ModuleId id;
     const bool usesOversampling;
+    const bool usesSidechain;
 
     dsp::OversamplingEngine oversampling;
+    dsp::OversamplingEngine sidechainOversampling; // upsampling only, for modules that read the sidechain
     dsp::DelayLine dryDelay;
     dsp::DelayLine wetPadding;
     juce::AudioBuffer<float> dryBuffer;

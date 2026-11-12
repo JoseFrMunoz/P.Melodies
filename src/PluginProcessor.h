@@ -114,6 +114,13 @@ public:
     void setEqSoloBand (int band) noexcept { eqSoloBand.store (band); }
     int getEqSoloBand() const noexcept { return eqSoloBand.load(); }
 
+    /**
+        Compressor "Escuchar": plays the signal that drives the compressor. Interface state like
+        the EQ solo: not automated and not saved (§12). Any thread.
+    */
+    void setCompressorListen (bool shouldListen) noexcept { compressorListen.store (shouldListen); }
+    bool isCompressorListening() const noexcept { return compressorListen.load(); }
+
     /** Reported latency in milliseconds, for the footer. */
     double getLatencyMilliseconds() const noexcept;
 
@@ -135,6 +142,7 @@ private:
 
     juce::AudioProcessorValueTreeState state;
     std::atomic<int> eqSoloBand { -1 };
+    std::atomic<bool> compressorListen { false };
     param::ParameterReader reader;
     AudioEngine engine;
     std::atomic<std::uint64_t> packedChainOrder { chain::pack (chain::defaultOrder()) };

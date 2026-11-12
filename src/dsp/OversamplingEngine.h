@@ -67,6 +67,21 @@ public:
         stage.processSamplesDown (block);
     }
 
+    /**
+        Upsampling only (for a sidechain that is read but not output). Gives the block at the high
+        rate, aligned with what process() hands its callback at the same factor. Index 0 returns the
+        block itself.
+    */
+    juce::dsp::AudioBlock<const float> upsample (int factorIndex, juce::dsp::AudioBlock<const float> block) noexcept
+    {
+        jassert (factorIndex >= 0 && factorIndex < numFactors);
+
+        if (factorIndex <= 0 || stages[(size_t) factorIndex] == nullptr)
+            return block;
+
+        return stages[(size_t) factorIndex]->processSamplesUp (block).getSubsetChannelBlock (0, block.getNumChannels());
+    }
+
 private:
     std::array<std::unique_ptr<juce::dsp::Oversampling<float>>, numFactors> stages;
     std::array<DelayLine, numFactors> alignment;

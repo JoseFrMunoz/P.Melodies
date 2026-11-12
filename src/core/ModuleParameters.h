@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "modules/comp/CompParameters.h"
 #include "modules/eq/EqParameters.h"
 
 namespace pm
@@ -11,12 +12,13 @@ namespace pm
 
 /**
     Per-module settings, taken once per audio block together with the global ones. Each module
-    reads its own part in ModuleBase::setParameters(). The compressor, saturation and distortion
-    add theirs in their phases.
+    reads its own part in ModuleBase::setParameters(). The saturation and distortion add theirs in
+    their phases.
 */
 struct ModuleParameters
 {
     eq::Parameters eq;
+    comp::Parameters comp;
 };
 
 } // namespace pm

@@ -9,8 +9,8 @@
 namespace pm
 {
 
-ModuleBase::ModuleBase (ModuleId moduleId, bool moduleUsesOversampling) noexcept
-    : id (moduleId), usesOversampling (moduleUsesOversampling)
+ModuleBase::ModuleBase (ModuleId moduleId, bool moduleUsesOversampling, bool moduleUsesSidechain) noexcept
+    : id (moduleId), usesOversampling (moduleUsesOversampling), usesSidechain (moduleUsesSidechain)
 {
 }
 
@@ -30,6 +30,9 @@ void ModuleBase::prepare (const juce::dsp::ProcessSpec& spec)
     {
         oversampling.prepare (numChannels, maxBlockSize);
         maxOversamplingLatency = oversampling.getMaxLatencySamples();
+
+        if (usesSidechain)
+            sidechainOversampling.prepare (maxSidechainChannels, maxBlockSize);
     }
 
     totalLatency = getCoreLatencySamples() + maxOversamplingLatency;
@@ -53,7 +56,10 @@ void ModuleBase::reset()
     wetPadding.reset();
 
     if (usesOversampling)
+    {
         oversampling.reset();
+        sidechainOversampling.reset();
+    }
 
     resetCore();
 
@@ -126,7 +132,10 @@ void ModuleBase::updateStageAtBlockStart() noexcept
             resetCore();
 
             if (usesOversampling)
+            {
                 oversampling.reset();
+                sidechainOversampling.reset();
+            }
 
             wetPadding.reset();
             stage = Stage::preRoll;
@@ -200,17 +209,43 @@ void ModuleBase::process (juce::dsp::AudioBlock<float> block, const SidechainBlo
     // 2. Decide what the wet path does during this block.
     updateStageAtBlockStart();
 
+    const auto finish = [&] (bool wetComputed)
+    {
+        if (tap != nullptr)
+            tap->push (block, dsp::AnalyzerTap::Point::post);
+        if (analyzerListening)
+            observe (dry, block, sidechain, wetComputed);
+    };
+
     if (stage == Stage::disengaged)
     {
         block.copyFrom (dry);
-        if (tap != nullptr)
-            tap->push (block, dsp::AnalyzerTap::Point::post);
+        finish (false);
         return;
     }
 
-    // 3. Wet path, in place.
-    oversampling.process (usesOversampling ? activeOversamplingIndex : 0, block,
-                          [this, sidechain] (juce::dsp::AudioBlock<float> highRate) { processCore (highRate, sidechain); });
+    // 3. Wet path, in place. A module that reads the sidechain gets it at the same rate.
+    const auto factorIndex = usesOversampling ? activeOversamplingIndex : 0;
+    const SidechainBlock* coreSidechain = usesSidechain ? sidechain : nullptr;
+    SidechainBlock upsampledSidechain;
+
+    if (coreSidechain != nullptr && factorIndex > 0)
+    {
+        const auto channels = juce::jmin (coreSidechain->getNumChannels(), (size_t) maxSidechainChannels);
+        if (channels > 0 && coreSidechain->getNumSamples() >= numSamples)
+        {
+            upsampledSidechain = sidechainOversampling.upsample (
+                factorIndex, coreSidechain->getSubsetChannelBlock (0, channels).getSubBlock (0, numSamples));
+            coreSidechain = &upsampledSidechain;
+        }
+        else
+        {
+            coreSidechain = nullptr;
+        }
+    }
+
+    oversampling.process (factorIndex, block,
+                          [this, coreSidechain] (juce::dsp::AudioBlock<float> highRate) { processCore (highRate, coreSidechain); });
     wetPadding.process (block);
 
     debug::checkFinite (block, "module wet path");
@@ -218,8 +253,7 @@ void ModuleBase::process (juce::dsp::AudioBlock<float> block, const SidechainBlo
     // 4. Fade between dry and wet.
     if (stage == Stage::engaged)
     {
-        if (tap != nullptr)
-            tap->push (block, dsp::AnalyzerTap::Point::post);
+        finish (true);
         return;
     }
 
@@ -239,8 +273,7 @@ void ModuleBase::process (juce::dsp::AudioBlock<float> block, const SidechainBlo
         }
     }
 
-    if (tap != nullptr)
-        tap->push (block, dsp::AnalyzerTap::Point::post);
+    finish (true);
 }
 
 void ModuleBase::copyStateFrom (const ModuleBase& other) noexcept
@@ -258,7 +291,10 @@ void ModuleBase::copyStateFrom (const ModuleBase& other) noexcept
     wetPadding.copyStateFrom (other.wetPadding);
 
     if (usesOversampling)
+    {
         oversampling.reset();
+        sidechainOversampling.reset();
+    }
 
     bypassed = other.bypassed;
     minimumOversamplingIndex = other.minimumOversamplingIndex;

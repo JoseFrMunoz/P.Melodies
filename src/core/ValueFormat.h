@@ -147,4 +147,47 @@ inline double parseNumber (const juce::String& text)
     return cleaned.getDoubleValue();
 }
 
+/** Like number(), without trailing zeros: 2 → "2", 2,50 → "2,5". */
+inline juce::String compact (double value, int maxDecimals, bool useUnicodeMinus = false)
+{
+    auto text = number (value, maxDecimals, useUnicodeMinus);
+    if (text.containsChar (','))
+        text = text.trimCharactersAtEnd ("0").trimCharactersAtEnd (",");
+    return text;
+}
+
+/** Times of the dynamics knobs: "0,005 ms", "0,5 ms", "2 ms", "120 ms", "2,5 s". */
+inline juce::String milliseconds (double ms)
+{
+    if (ms >= 1000.0)
+        return compact (ms / 1000.0, 2) + " s";
+    const auto decimals = ms < 0.1 ? 3 : ms < 1.0 ? 2 : ms < 10.0 ? 1 : 0;
+    return compact (ms, decimals) + " ms";
+}
+
+/** Parses a time typed by the user: "10", "10 ms", "2,5 s". */
+inline double parseMilliseconds (const juce::String& text)
+{
+    const auto lower = text.trim().toLowerCase();
+    const auto value = parseNumber (lower);
+    return lower.endsWith ("s") && ! lower.endsWith ("ms") ? value * 1000.0 : value;
+}
+
+/** Compression ratio: "1,5:1", "4:1", "100:1", and "∞:1" from infiniteRatio up. */
+inline juce::String ratio (double r, double infiniteRatio = 1000.0)
+{
+    if (r >= infiniteRatio)
+        return juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e:1"));
+    return compact (r, r < 10.0 ? 1 : 0) + ":1";
+}
+
+/** Parses "4", "4:1", "1,5:1", "inf" or "∞". */
+inline double parseRatio (const juce::String& text, double infiniteRatio = 1000.0)
+{
+    const auto lower = text.trim().toLowerCase();
+    if (lower.contains ("inf") || lower.contains (juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e"))))
+        return infiniteRatio;
+    return parseNumber (lower.upToFirstOccurrenceOf (":", false, false));
+}
+
 } // namespace pm::format

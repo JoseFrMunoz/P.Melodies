@@ -55,6 +55,14 @@ public:
     void setModuleBypassed (ModuleId id, bool shouldBeBypassed) noexcept;
     void setModuleParameters (const ModuleParameters& parameters) noexcept;
 
+    /** Calls f on the module `id` of both sets (setup from the message thread, before playing). */
+    template <typename Function>
+    void forEachModule (ModuleId id, Function&& f)
+    {
+        for (auto& set : sets)
+            f (*set[(size_t) toIndex (id)]);
+    }
+
     /** Connects a module's analyser feed (both sets; only the heard set pushes). */
     void setAnalyzerTap (ModuleId id, dsp::AnalyzerTap* tap) noexcept;
     void setMinimumOversamplingIndex (int index) noexcept;

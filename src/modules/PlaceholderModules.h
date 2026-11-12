@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/ModuleBase.h"
+#include "modules/comp/CompressorModule.h"
 #include "modules/eq/EqModule.h"
 
 #include <memory>
@@ -40,6 +41,8 @@ inline std::unique_ptr<ModuleBase> createModule (ModuleId id)
 {
     if (id == ModuleId::eq)
         return std::make_unique<eq::EqModule>();
+    if (id == ModuleId::compressor)
+        return std::make_unique<comp::CompressorModule>();
     return std::make_unique<PlaceholderModule> (id, moduleUsesOversampling (id));
 }
 

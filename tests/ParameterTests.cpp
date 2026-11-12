@@ -45,8 +45,11 @@ TEST_CASE ("Every parameter is automatable, uniquely identified and readable", "
     }
 
     // 13 global and chain parameters (phase 0; the chain order is not a parameter, §12)
-    // + the EQ: character and 7 per band (phase 1).
-    CHECK (ids.size() == 13 + 1 + 7 * eq::numBands);
+    // + the EQ: character and 7 per band (phase 1) + the compressor's 25 (phase 2).
+    CHECK (ids.size() == 13 + 1 + 7 * eq::numBands + 25);
+    CHECK (param::compressorIds().size() == 25);
+    for (const auto& id : param::compressorIds())
+        CHECK (ids.contains (id));
     CHECK_FALSE (ids.contains ("chainOrder"));
     CHECK (processor.getBypassParameter() == processor.getState().getParameter (param::id::bypass));
 }

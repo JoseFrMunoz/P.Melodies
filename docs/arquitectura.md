@@ -1,6 +1,6 @@
 # Arquitectura de P.Melodies
 
-Estado: **Fase 0** (base común). Los cuatro módulos existen con su latencia y su oversampling definitivos, pero todavía no procesan el audio. Su DSP llega en las fases 1 a 4.
+Estado: **Fase 2** (compresor). Los cuatro módulos existen con su latencia y su oversampling definitivos. El EQ (fase 1) y el compresor (fase 2) ya procesan el audio; la saturación y la distorsión llegan en las fases 3 y 4.
 
 ## Organización del código
 
@@ -15,12 +15,14 @@ src/
     ChainOrder.*           Orden de la cadena: lista de módulos ↔ texto del estado y palabra atómica
     AudioEngine.*          Recorrido completo de la señal (sección global incluida)
     Parameters.*           IDs, rangos y lectura sin bloqueos de los parámetros
-    ModuleParameters.h     Instantánea de los ajustes de cada módulo (EQ desde la fase 1)
+    ModuleParameters.h     Instantánea de los ajustes de cada módulo (EQ desde la fase 1, compresor desde la 2)
   dsp/                   Piezas DSP reutilizables (retardo, clipper, medidores…)
     AnalyzerTap.h          Muestras de un módulo hacia el analizador de la interfaz
     eq/                    Diseño de filtros del EQ, cascada SVF y carácter (docs/dsp/eq.md)
+    comp/                  Curva, detector y estilos del compresor, y sus medidores (docs/dsp/compresor.md)
   modules/               Implementación de cada módulo
     eq/                    EQ: bandas con suavizado, solo, carácter (fase 1)
+    comp/                  Compresor: sidechain y su EQ, lookahead, mix, escuchar (fase 2)
     PlaceholderModules.h   Fábrica de módulos; marcadores para los que aún no existen
   ui/                    Interfaz: tema, componentes y paneles
     eq/                    Página del EQ: gráfica, mini panel de la banda, editor de banda y analizador
@@ -53,7 +55,7 @@ La latencia que se comunica a FL Studio es **constante**, y la máxima posible (
 
 La latencia de cada factor de oversampling se lleva a un número **entero** de muestras con un pequeño retardo a la frecuencia interna más alta. Así todas las alineaciones son retardos enteros exactos, y el test de impulso lo comprueba muestra a muestra.
 
-En la fase 0, el EQ no tiene latencia (v1, sin oversampling) y los otros tres módulos reservan la del oversampling a 16x. El total es de unos 4,2 ms a 48 kHz. Con el lookahead del compresor (fase 2) se sumarán 20 ms.
+El EQ no tiene latencia (v1, sin oversampling) y los otros tres módulos reservan la del oversampling a 16x. Desde la fase 2, el compresor suma además los 20 ms de su lookahead máximo, aunque el lookahead esté a 0. El total es de unos 24,2 ms a 48 kHz, y no cambia al mover ningún control.
 
 ## Módulos: estados del procesado
 
@@ -63,6 +65,10 @@ En la fase 0, el EQ no tiene latencia (v1, sin oversampling) y los otros tres m�
 - **Encender:** se reinician los filtros, se procesa en silencio durante un *pre-roll* que los rellena y después hay un fundido de entrada de 10 ms.
 - **Apagar:** fundido de salida de 10 ms hasta la ruta seca alineada.
 - **Cambiar el factor de oversampling:** fundido de salida, cambio, *pre-roll* y fundido de entrada, todo sin clics.
+
+**Sidechain:** un módulo que lee el sidechain externo (el compresor) lo recibe a su frecuencia de oversampling. `ModuleBase` lo sobremuestrea con los mismos filtros que el audio, así que las dos señales llegan alineadas.
+
+**Medidores:** al final de cada bloque, el módulo del juego que se oye recibe su entrada alineada, su salida y el sidechain (`ModuleBase::observe`). El compresor los usa para su gráfico de niveles: un punto cada 5 ms por la cola sin bloqueos de la fase 0, más la reducción actual en un atómico.
 
 ## Reordenado sin clics
 

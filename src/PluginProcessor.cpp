@@ -40,6 +40,7 @@ EngineParameters PMelodiesProcessor::readEngineParameters() const noexcept
     auto p = reader.read();
     p.chainOrder = chain::unpack (packedChainOrder.load());
     p.modules.eq.soloBand = eqSoloBand.load();
+    p.modules.comp.listen = compressorListen.load();
     return p;
 }
 

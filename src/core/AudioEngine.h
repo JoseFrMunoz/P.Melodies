@@ -8,6 +8,7 @@
 #include "dsp/DelayLine.h"
 #include "dsp/LevelMeter.h"
 #include "dsp/LoudnessMatcher.h"
+#include "dsp/comp/CompressorMeter.h"
 #include "modules/PlaceholderModules.h"
 
 #include <array>
@@ -84,6 +85,9 @@ public:
     /** The EQ's spectrum analyser feed (read by the interface). */
     dsp::AnalyzerTap& getEqAnalyzer() noexcept { return eqAnalyzer; }
 
+    /** The compressor's level graph and gain reduction (read by the interface). */
+    dsp::comp::CompressorMeter& getCompressorMeter() noexcept { return compressorMeter; }
+
     /** Size of the internal processing blocks for a given host block size. */
     static int internalBlockSizeFor (int hostBlockSize) noexcept;
 
@@ -107,6 +111,7 @@ private:
     LinearSmoother mix, compareFade, clipperFade, bypassFade;
 
     dsp::AnalyzerTap eqAnalyzer;
+    dsp::comp::CompressorMeter compressorMeter;
     dsp::LoudnessMatcher loudness;
     dsp::LevelMeter inputLevel, outputLevel;
     dsp::MeterReadout inputMeter, outputMeter;
