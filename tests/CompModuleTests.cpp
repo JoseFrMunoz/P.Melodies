@@ -10,6 +10,7 @@
 #include "Measurement.h"
 #include "TestHelpers.h"
 
+#include "core/AudioEngine.h"
 #include "core/Parameters.h"
 #include "modules/comp/CompressorModule.h"
 
@@ -445,6 +446,38 @@ TEST_CASE ("Compressor module: processing never allocates and stays finite", "[c
         CHECK (allocations == 0);
         CHECK (allFinite (buffer));
     }
+}
+
+TEST_CASE ("Compressor in the chain: reordering while it compresses does not click", "[comp][module][phase2]")
+{
+    const double fs = 48000.0;
+    AudioEngine engine;
+    EngineParameters p;
+    p.modules.comp.thresholdDb = -30.0f;
+    p.modules.comp.attackMs = 5.0f;
+    p.modules.comp.style = Style::bus;
+    p.modules.eq.bands[0].active = true;
+    p.modules.eq.bands[0].settings.type = dsp::eq::FilterType::bell;
+    p.modules.eq.bands[0].settings.frequency = 150.0;
+    p.modules.eq.bands[0].settings.gainDb = 6.0;
+    p.clipperEnabled = false;
+    engine.prepare (fs, 512, 2, p);
+
+    const auto input = tone (150.0, -6.0, 3.0, fs);
+    const auto output = runEngine (engine, input, blockSizes (input.getNumSamples(), 512, 512), p, false,
+                                   [] (int, int start, EngineParameters& params)
+                                   {
+                                       // Compressor before the EQ, then back.
+                                       if (start >= 48000 && start < 96000)
+                                           params.chainOrder = chain::move (chain::defaultOrder(), 1, 0);
+                                       else
+                                           params.chainOrder = chain::defaultOrder();
+                                   });
+
+    CHECK (allFinite (output));
+    CHECK (toneLevelDb (output, 150.0, fs) < -12.0); // it really compresses (input plus EQ: 0 dB)
+    // A 20 ms crossfade between two compressed versions: well below an audible click.
+    CHECK (measure::clickScore (output.getReadPointer (0), output.getNumSamples(), fs, (int) (0.5 * fs)) < 2.0e-3);
 }
 
 //==============================================================================

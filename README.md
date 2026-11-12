@@ -15,7 +15,7 @@
 | Módulo | Qué hace | Fase |
 |---|---|---|
 | EQ | Hasta 8 bandas, edición directa sobre la curva, analizador de espectro, latencia cero, curva fiel a la analógica hasta Nyquist, carácter Clean/Subtle/Warm (hecho en la fase 1) | 1 |
-| Compresor | 8 estilos, lookahead, hold, range, sidechain externo con EQ | 2 |
+| Compresor | 8 estilos que dependen del programa, lookahead, hold, range, auto-gain y auto-release, sidechain externo con EQ y escucha, gráfico de niveles y curva de transferencia (hecho en la fase 2) | 2 |
 | Saturación multibanda | Hasta 6 bandas con 16 estilos analógicos, drive, feedback, dynamics y tono por banda | 3 |
 | Distorsión | Hard clip, foldback, rectificador, fuzz, bitcrusher y downsample | 4 |
 

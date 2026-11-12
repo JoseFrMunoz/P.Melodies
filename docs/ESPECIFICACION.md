@@ -311,7 +311,15 @@ Sección 4 completa, DSP e interfaz.
 
 ### Fase 2 — Compresor
 Sección 5 completa.
-- **Estado:** empezada el 2026-11-12 en `phase/2-compressor` (sale de `phase/1-eq`). Leídas §5, la pantalla 02 y el manual de Pro-C 2. P.P. aprobó todas las recomendaciones de las preguntas del módulo el mismo día («ok a todo», §12, fila «Compresor: respuestas de P.P.»). En desarrollo.
+- **Estado:** empezada el 2026-11-12 en `phase/2-compressor` (sale de `phase/1-eq`). Leídas §5, la pantalla 02 y el manual de Pro-C 2. P.P. aprobó todas las recomendaciones de las preguntas del módulo el mismo día («ok a todo», §12, fila «Compresor: respuestas de P.P.»). **Terminada el 2026-11-12, a la espera de las pruebas y el visto bueno de P.P.**
+- **Cómo quedó** (detalle del DSP en `docs/dsp/compresor.md`):
+  - Curva con rodilla suave y range, igual en todos los estilos salvo Opto (+12 dB de knee) y Vocal (ratio y knee automáticos, de 1,5:1 a 20:1). Attack y release exactos en Clean (error ≤ 2 %).
+  - Estilos: detector de picos (con 5 ms de retención para que un tono estable no rice) o RMS; realimentación resuelta sin retardo de una muestra (estable con cualquier attack) y sin cambiar la curva; release en dos etapas que recuerda las compresiones largas (también el auto-release); attack en S de Punch; release de Pumping, lento al principio y rápido al final.
+  - Latencia constante de 20 ms más el oversampling (24,2 ms a 48 kHz). El sidechain externo se sobremuestrea con los mismos filtros que el audio.
+  - En reposo con los valores por defecto (threshold a 0 dB): la salida es la entrada retrasada, idéntica bit a bit, y no gasta CPU.
+  - EQ del sidechain con los filtros del EQ. A 20 kHz el pasa-bajos queda abierto, para que el valor por defecto no tenga ningún efecto.
+  - Interfaz de la pantalla 02: estilos con su descripción al pasar el cursor, gráfico de 4 s, curva de transferencia con el nivel actual, EQ del sidechain interactivo, escuchar (clic o mantenido), aviso de sidechain externo sin señal y la fila de la cadena «Bus · −3,2 dB».
+  - CPU (Xeon de 2,3 GHz, 48 kHz): el compresor Clean sin oversampling usa el 0,35 % de un núcleo; Bus con el EQ del sidechain completo a 2x, el 2,1 %; Opto con sidechain externo y lookahead a 4x, el 3,9 %.
 - **Referencias:** manual de Pro-C 2 (sus 8 estilos son los de §5). El de Pro-C 3 solo como contexto: lo que añade queda fuera de la especificación.
 - El gráfico de niveles recibe sus datos por la cola sin bloqueos de la fase 0.
 - **Tests:**

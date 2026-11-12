@@ -109,6 +109,39 @@ CpuResult measurePlugin (const std::string& name, bool offline, bool fullEq = fa
     });
 }
 
+/** The compressor working on noise (−20 dB threshold), with the given style and sidechain load. */
+CpuResult measureCompressor (const std::string& name, int globalQuality, int style, int oversampling, bool fullSidechainEq,
+                             bool externalWithLookahead)
+{
+    PMelodiesProcessor processor;
+    prepareProcessor (processor, sampleRate, blockSize, 2);
+    setParameter (processor, param::id::qualityRealtime, (float) globalQuality);
+    setParameter (processor, param::id::compThreshold, -20.0f);
+    setParameter (processor, param::id::compStyle, (float) style);
+    setParameter (processor, param::id::compOversampling, (float) oversampling);
+    if (fullSidechainEq)
+    {
+        setParameter (processor, param::id::compScHpSlope, 7.0f); // 96 dB/oct
+        setParameter (processor, param::id::compScLpFreq, 8000.0f);
+        setParameter (processor, param::id::compScLpSlope, 7.0f);
+        setParameter (processor, param::id::compScBellGain, 6.0f);
+    }
+    if (externalWithLookahead)
+    {
+        setParameter (processor, param::id::compSidechain, 1.0f);
+        setParameter (processor, param::id::compLookahead, 10.0f);
+    }
+
+    const auto noise = makeNoise (2, blockSize, 0.5f);
+    juce::AudioBuffer<float> io (4, blockSize); // main stereo + stereo sidechain
+    juce::MidiBuffer midi;
+    return measure (name, [&]
+    {
+        refill (io, noise, 4);
+        processor.processBlock (io, midi);
+    });
+}
+
 /** Four active test modules: what the oversampling infrastructure costs before any real DSP. */
 CpuResult measureOversampledChain (const std::string& name, int factorIndex)
 {
@@ -158,6 +191,9 @@ TEST_CASE ("CPU use of the plugin and of the oversampling infrastructure", "[.cp
     results.push_back (measurePlugin ("Plugin, default settings, exporting", true));
     results.push_back (measurePlugin ("Plugin, EQ with 8 bands (two 96 dB/oct cuts) and Warm", false, true));
     results.push_back (measurePlugin ("Same, every band's frequency automated every block", false, true, true));
+    results.push_back (measureCompressor ("Compressor, Clean, no oversampling", 0, 0, 0, false, false));
+    results.push_back (measureCompressor ("Compressor, Bus, full sidechain EQ, 2x (default playing quality)", 1, 5, 0, true, false));
+    results.push_back (measureCompressor ("Compressor, Opto, external sidechain, lookahead, 4x", 1, 2, 2, true, true));
     results.push_back (measureOversampledChain ("4 active modules at 2x (default playing quality)", 1));
     results.push_back (measureOversampledChain ("4 active modules at 8x (default export quality)", 3));
     results.push_back (measureOversampledChain ("4 active modules at 16x (maximum quality)", 4));
