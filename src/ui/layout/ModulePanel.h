@@ -5,6 +5,7 @@
 #pragma once
 
 #include "core/Module.h"
+#include "ui/comp/CompPanel.h"
 #include "ui/eq/EqPanel.h"
 
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -20,8 +21,8 @@ namespace pm::ui
 {
 
 /**
-    Right panel: the selected module at full size. The EQ has its page since phase 1; the other
-    modules show their title until their own phase.
+    Right panel: the selected module at full size. The EQ has its page since phase 1 and the
+    compressor since phase 2; the other modules show their title until their own phase.
 */
 class ModulePanel final : public juce::Component
 {
@@ -37,12 +38,16 @@ public:
     /** The EQ page (always exists; visible while the EQ is selected). */
     EqPanel& getEqPanel() noexcept { return eqPanel; }
 
+    /** The compressor page (always exists; visible while the compressor is selected). */
+    CompPanel& getCompPanel() noexcept { return compPanel; }
+
     void paint (juce::Graphics&) override;
     void resized() override;
 
 private:
     ModuleId module = ModuleId::eq;
     EqPanel eqPanel;
+    CompPanel compPanel;
 };
 
 } // namespace pm::ui

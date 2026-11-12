@@ -16,6 +16,7 @@
 #include "ui/components/ToggleSwitch.h"
 #include "ui/theme/Theme.h"
 #include "ui/eq/EqPanel.h"
+#include "ui/comp/CompPanel.h"
 #include "ui/layout/SettingsPanel.h"
 
 #include <catch2/catch_approx.hpp>
@@ -435,7 +436,9 @@ TEST_CASE ("Every interactive control has a help tooltip", "[ui][tooltips][phase
                        {
                            const auto interactive = dynamic_cast<juce::Button*> (&c) != nullptr
                                                     || dynamic_cast<ui::Knob*> (&c) != nullptr
-                                                    || dynamic_cast<ui::SegmentedSelector*> (&c) != nullptr;
+                                                    || dynamic_cast<ui::SegmentedSelector*> (&c) != nullptr
+                                                    || dynamic_cast<ui::ChipSelector*> (&c) != nullptr
+                                                    || dynamic_cast<ui::SidechainEqView*> (&c) != nullptr;
                            if (! interactive || dynamic_cast<juce::HyperlinkButton*> (&c) != nullptr)
                                return;
                            if (c.findParentComponentOfClass<ui::Dropdown>() != nullptr)
@@ -518,6 +521,34 @@ TEST_CASE ("Snapshot of the interface for visual review", "[.snapshot]")
         eqPanel.refresh();
         savePng (pm.createComponentSnapshot (pm.getLocalBounds(), true, 2.0f), "01c-eq-solo");
         graph.endSolo();
+    }
+
+    // Compressor page as in design 02: Bus, compressing a pulsing signal, with auto-gain.
+    {
+        setParameter (processor, param::id::compStyle, 5.0f);
+        setParameter (processor, param::id::compThreshold, -18.0f);
+        setParameter (processor, param::id::compKnee, 12.0f);
+        setParameter (processor, param::id::compRange, 24.0f);
+        setParameter (processor, param::id::compLookahead, 2.0f);
+        setParameter (processor, param::id::compMakeup, 2.5f);
+        setParameter (processor, param::id::compAutoGain, 1.0f);
+        setParameter (processor, param::id::compOversampling, 1.0f);
+        pm.selectModule (ModuleId::compressor);
+
+        // A tone whose level pulses like music: four seconds, so the graph is full.
+        auto pulses = makeSine (2, 4 * 48000, 180.0, 48000.0, 1.0f);
+        for (int i = 0; i < pulses.getNumSamples(); ++i)
+        {
+            const auto t = (double) i / 48000.0;
+            const auto envelope = 0.12 + 0.88 * std::pow (0.5 + 0.5 * std::sin (2.0 * pmtest::twoPi * t), 3.0);
+            for (int ch = 0; ch < 2; ++ch)
+                pulses.setSample (ch, i, pulses.getSample (ch, i) * (float) envelope);
+        }
+        runProcessor (processor, pulses, blockSizes (pulses.getNumSamples(), 512, 512));
+        pm.refresh();
+        pm.getChainPanel().refreshStatus();
+        savePng (pm.createComponentSnapshot (pm.getLocalBounds(), true, 2.0f), "02-compresor");
+        pm.selectModule (ModuleId::eq);
     }
 
     // Component gallery: standard knobs with module colours, selector, dropdown, switch.

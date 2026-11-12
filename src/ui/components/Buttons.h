@@ -39,7 +39,7 @@ private:
     Rounded text button (".btn" in the design), with an optional leading icon and an optional
     trailing chevron (dropdown look). As a toggle it lights up with the accent colour.
 */
-class PillButton final : public juce::Button
+class PillButton : public juce::Button
 {
 public:
     explicit PillButton (const juce::String& text);

@@ -35,6 +35,8 @@ PMelodiesEditor::PMelodiesEditor (PMelodiesProcessor& p)
     chainPanel.onModuleSelected = [this] (ModuleId id) { selectModule (id); };
     chainPanel.statusText = [this] (ModuleId id) -> juce::String
     {
+        if (id == ModuleId::compressor)
+            return modulePanel.getCompPanel().chainStatus();
         if (id != ModuleId::eq)
             return "Activo";
         const auto bands = modulePanel.getEqPanel().getController().getNumActiveBands();

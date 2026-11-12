@@ -860,7 +860,7 @@ TEST_CASE ("EQ header: character, analyser and scale; chain row shows the band c
     CHECK (chain.getStatusText (ModuleId::eq) == "1 banda");
     ui.controller().createBand (FilterType::bell, 900.0, 2.0);
     CHECK (chain.getStatusText (ModuleId::eq) == "2 bandas");
-    CHECK (chain.getStatusText (ModuleId::compressor) == "Activo");
+    CHECK (chain.getStatusText (ModuleId::saturation) == "Activo"); // until phase 3 (the compressor shows its style since phase 2)
 }
 
 TEST_CASE ("Spectrum analyser: level of a tone, display tilt, and the feed from the audio thread", "[ui][eq][analyser][phase1]")

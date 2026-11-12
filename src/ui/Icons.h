@@ -33,7 +33,8 @@ enum class Icon
     shapeNotch,
     shapeBandPass,
     shapeTilt,
-    headphones // solo of an EQ band
+    headphones, // solo of an EQ band
+    speaker     // the compressor's "Escuchar"
 };
 
 /** Icon of an EQ band shape (FilterType index 0-7). */
