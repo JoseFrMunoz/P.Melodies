@@ -173,6 +173,25 @@ private:
 };
 
 //==============================================================================
+/** Follows the pointer over the panel and all its controls. */
+class EqBandPopup::HoverTracker final : public juce::MouseListener
+{
+public:
+    explicit HoverTracker (EqBandPopup& p) : popup (p) {}
+
+    void mouseEnter (const juce::MouseEvent& e) override { popup.setHovered (true, inParent (e)); }
+    void mouseExit (const juce::MouseEvent& e) override { popup.setHovered (false, inParent (e)); }
+
+private:
+    juce::Point<float> inParent (const juce::MouseEvent& e) const
+    {
+        return e.getEventRelativeTo (&popup).position + popup.getPosition().toFloat();
+    }
+
+    EqBandPopup& popup;
+};
+
+//==============================================================================
 EqBandPopup::EqBandPopup (EqGraph& g, EqController& c)
     : graph (g),
       controller (c),
@@ -219,9 +238,29 @@ EqBandPopup::EqBandPopup (EqGraph& g, EqController& c)
     }
     shapeRow.setVisible (false);
     setVisible (false);
+
+    hoverTracker = std::make_unique<HoverTracker> (*this);
+    addMouseListener (hoverTracker.get(), true);
 }
 
-EqBandPopup::~EqBandPopup() = default;
+EqBandPopup::~EqBandPopup()
+{
+    removeMouseListener (hoverTracker.get());
+}
+
+void EqBandPopup::setHovered (bool isOver, juce::Point<float> positionInParent)
+{
+    // Moving between the panel and one of its buttons is not leaving it.
+    if (! isOver && isVisible())
+    {
+        const auto local = (positionInParent - getPosition().toFloat()).roundToInt();
+        if (hitTest (local.x, local.y))
+            return;
+    }
+    hovered = isOver;
+    if (onHoverChanged)
+        onHoverChanged (isOver, positionInParent);
+}
 
 juce::Button& EqBandPopup::getShapeButton() noexcept { return *shape; }
 juce::Component& EqBandPopup::getSoloButton() noexcept { return *solo; }
@@ -241,6 +280,8 @@ void EqBandPopup::update (int newBand, juce::Point<float> newPoint, juce::Rectan
     if (newBand < 0)
     {
         band = -1;
+        hovered = false;
+        corridor = {};
         placed = false;
         animating = false;
         if (shapeRowOpen)
@@ -349,6 +390,11 @@ void EqBandPopup::layout()
         all = all.getUnion (row);
     }
 
+    // From the card to the point, as wide as the card: the way from one to the other.
+    constexpr auto pointReach = 13.0f; // the point's grab radius
+    corridor = above ? juce::Rectangle<float>::leftTopRightBottom (card.getX(), card.getBottom(), card.getRight(), point.y + pointReach)
+                     : juce::Rectangle<float>::leftTopRightBottom (card.getX(), point.y - pointReach, card.getRight(), card.getY());
+
     const auto bounds = all.getSmallestIntegerContainer().expanded (shadowMargin);
     setBounds (bounds);
     const auto origin = bounds.getPosition().toFloat();
@@ -393,7 +439,8 @@ bool EqBandPopup::hitTest (int x, int y)
 {
     if (cardArea.contains (x, y))
         return true;
-    return shapeRowOpen && shapeRow.getBounds().contains (x, y);
+    // With the row of shapes open, the gap between card and row counts too (one area to hover).
+    return shapeRowOpen && cardArea.getUnion (shapeRow.getBounds()).contains (x, y);
 }
 
 void EqBandPopup::paint (juce::Graphics& g)

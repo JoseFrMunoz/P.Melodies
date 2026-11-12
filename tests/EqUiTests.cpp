@@ -424,21 +424,25 @@ TEST_CASE ("Notes are named and typed as in FL Studio (A5 = 440 Hz)", "[format][
     CHECK (ui.controller().getBand (band).settings.frequency == Catch::Approx (hzOf (28, 50)).epsilon (2.0e-4));
 }
 
-TEST_CASE ("EQ mini panel: opens on the selected band with its values, above the point, and follows it", "[ui][eq][popup][phase1]")
+TEST_CASE ("EQ mini panel: shows while the pointer is on the point or the panel, and while dragging", "[ui][eq][popup][phase1]")
 {
     EqUi ui;
     auto& g = ui.graph();
     auto& c = ui.controller();
     auto& popup = g.getPopup();
     const auto left = juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier);
+    const auto hover = [&] (juce::Point<float> at) { g.mouseMove (mouseEvent (g, at, juce::ModifierKeys())); };
+    const auto empty = juce::Point<float> (g.xForFrequency (5000.0), g.yForGain (-9.0));
 
-    CHECK_FALSE (popup.isVisible());
     const auto band = c.createBand (FilterType::bell, 400.0, -4.0); // creating selects it
     REQUIRE (c.getSelectedBand() == band);
-    CHECK (popup.isVisible());
-    CHECK (popup.getBand() == band);
+    // Selecting is not enough (P.P., 2026-11-12): the panel waits for the pointer.
+    CHECK_FALSE (popup.isVisible());
 
     auto p = g.pointForBand (band);
+    hover (p + juce::Point<float> (3.0f, 2.0f));
+    REQUIRE (popup.isVisible());
+    CHECK (popup.getBand() == band);
     auto card = popup.getCardBoundsInParent();
     CHECK (popup.isAbove());
     CHECK ((float) card.getBottom() < p.y - 10.0f);
@@ -451,11 +455,49 @@ TEST_CASE ("EQ mini panel: opens on the selected band with its values, above the
     CHECK (values[2] == format::unicodeMinus() + "4,0 dB");
     CHECK (values[3] == "Q 1,00");
 
-    // It follows the point while it is dragged, and changes from outside (automation).
-    g.beginDrag (band, p);
-    g.dragTo (p + juce::Point<float> (100.0f, 0.0f), false);
+    // Away from the point it goes.
+    hover (empty);
+    CHECK_FALSE (popup.isVisible());
+
+    // On the way up to the panel it stays (the corridor), and on the panel too.
+    hover (p);
+    REQUIRE (popup.isVisible());
+    const auto wayUp = juce::Point<float> (p.x + 30.0f, popup.getCorridor().getY() + 3.0f);
+    REQUIRE (g.bandAt (wayUp) < 0);
+    hover (wayUp);
+    CHECK (popup.isVisible());
+    const auto inCard = popup.getCardBoundsInParent().getCentre().toFloat();
+    g.mouseExit (mouseEvent (g, inCard, juce::ModifierKeys())); // the display hands the pointer to the panel
+    CHECK (popup.isHovered());
+    CHECK (popup.isVisible());
+    popup.setHovered (false, inCard); // from the card onto one of its buttons: still on the panel
+    CHECK (popup.isHovered());
+    CHECK (popup.isVisible());
+
+    // Leaving it for the empty display, or leaving the display, closes it.
+    popup.setHovered (false, empty);
+    CHECK_FALSE (popup.isVisible());
+    hover (p);
+    CHECK (popup.isVisible());
+    g.mouseExit (mouseEvent (g, { -5.0f, p.y }, juce::ModifierKeys()));
+    CHECK_FALSE (popup.isVisible());
+
+    // While a point is held or dragged it shows, even if the pointer falls behind (Ctrl: fine).
+    g.mouseDown (mouseEvent (g, p, left));
+    CHECK (popup.isVisible());
+    const auto far = p + juce::Point<float> (200.0f, 0.0f);
+    g.mouseDrag (mouseEvent (g, far, juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier | juce::ModifierKeys::ctrlModifier)));
+    CHECK (popup.isVisible());
     CHECK (std::abs ((float) popup.getCardBoundsInParent().getCentreX() - g.pointForBand (band).x) <= 1.0f);
-    g.endDrag();
+    g.mouseUp (mouseEvent (g, far, juce::ModifierKeys()));
+    CHECK_FALSE (popup.isVisible()); // released away from the point
+    p = g.pointForBand (band);
+    g.mouseDown (mouseEvent (g, p, left));
+    g.mouseUp (mouseEvent (g, p, juce::ModifierKeys()));
+    CHECK (popup.isVisible()); // released on it
+
+    // While shown it follows changes from outside (automation).
+    popup.setHovered (true, popup.getCardBoundsInParent().getCentre().toFloat());
     c.setValue (band, EqField::frequency, 2000.0f);
     g.refresh();
     CHECK (popup.getValueTexts()[0] == "2,00 kHz");
@@ -479,9 +521,11 @@ TEST_CASE ("EQ mini panel: opens on the selected band with its values, above the
         g.refresh();
         CHECK (g.getLocalBounds().contains (popup.getCardBoundsInParent()));
     }
+    popup.setHovered (false, empty);
 
     // Cuts show their slope with the wheel hint; a 6 dB/oct cut has no Q.
     const auto cut = c.createBand (FilterType::lowCut, 60.0, 0.0);
+    hover (g.pointForBand (cut));
     REQUIRE (popup.getBand() == cut);
     CHECK (popup.getValueTexts()[2] == "12 dB/oct");
     CHECK (popup.getValueTexts()[3] == "Q 1,00");
@@ -489,8 +533,8 @@ TEST_CASE ("EQ mini panel: opens on the selected band with its values, above the
     g.refresh();
     CHECK (popup.getValueTexts()[3] == juce::String (juce::CharPointer_UTF8 ("Q \xe2\x80\x94")));
 
-    // A click on the background closes it.
-    g.mouseDown (mouseEvent (g, { g.xForFrequency (300.0), g.yForGain (-9.0) }, left));
+    // A click on the background deselects; the panel is gone since the pointer left the point.
+    g.mouseDown (mouseEvent (g, empty, left));
     CHECK_FALSE (popup.isVisible());
     CHECK (c.getSelectedBand() == -1);
 }
@@ -503,7 +547,9 @@ TEST_CASE ("EQ mini panel: bypass, shape row, solo while held, delete and Esc", 
     auto& popup = g.getPopup();
     const auto left = juce::ModifierKeys (juce::ModifierKeys::leftButtonModifier);
     const auto band = c.createBand (FilterType::bell, 1000.0, 3.0);
+    g.mouseMove (mouseEvent (g, g.pointForBand (band), juce::ModifierKeys()));
     REQUIRE (popup.isVisible());
+    popup.setHovered (true, popup.getCardBoundsInParent().getCentre().toFloat()); // the pointer is on the panel
 
     // No control of the panel takes the keyboard: the space bar keeps reaching FL Studio.
     for (auto* comp : { (juce::Component*) &popup.getBypassButton(), (juce::Component*) &popup.getShapeButton(),
@@ -527,18 +573,18 @@ TEST_CASE ("EQ mini panel: bypass, shape row, solo while held, delete and Esc", 
     CHECK (c.getBand (band).settings.type == FilterType::notch);
     CHECK_FALSE (popup.isShapeRowOpen());
 
-    // Esc: first the row, then the panel; with nothing open it goes on to the host.
+    // Esc: first the row, then the selection; with nothing left it goes on to the host.
     popup.getShapeButton().onClick();
     CHECK (g.keyPressed (juce::KeyPress (juce::KeyPress::escapeKey)));
     CHECK_FALSE (popup.isShapeRowOpen());
     CHECK (popup.isVisible());
     CHECK (g.keyPressed (juce::KeyPress (juce::KeyPress::escapeKey)));
-    CHECK_FALSE (popup.isVisible());
+    CHECK (c.getSelectedBand() == -1);
+    CHECK (popup.isVisible()); // still under the pointer
     CHECK_FALSE (g.keyPressed (juce::KeyPress (juce::KeyPress::escapeKey)));
     CHECK_FALSE (g.keyPressed (juce::KeyPress (juce::KeyPress::spaceKey)));
 
     // Solo while the headphones are held; on release, back to what was soloed before.
-    c.setSelectedBand (band);
     auto& solo = popup.getSoloButton();
     const auto press = [&] { solo.mouseDown (mouseEvent (solo, { 12.0f, 12.0f }, left)); };
     const auto release = [&] { solo.mouseUp (mouseEvent (solo, { 12.0f, 12.0f }, juce::ModifierKeys())); };
@@ -552,7 +598,7 @@ TEST_CASE ("EQ mini panel: bypass, shape row, solo while held, delete and Esc", 
 
     const auto other = c.createBand (FilterType::bell, 200.0, 2.0);
     c.setSoloBand (other); // latched with the editor's Solo button
-    c.setSelectedBand (band);
+    REQUIRE (popup.getBand() == band);
     press();
     CHECK (c.getSoloBand() == band);
     release();
@@ -633,8 +679,9 @@ TEST_CASE ("EQ solo: dragging the held headphones moves the band, Ctrl sets the 
     CHECK (g.soloRangeHz().getEnd() == Catch::Approx (ui::EqGraph::maxDisplayHz));
     c.setSoloBand (-1);
 
-    // Through the panel's headphones: press, drag sideways, release.
-    c.setSelectedBand (band);
+    // Through the panel's headphones (the pointer on the point shows it): press, drag sideways, release.
+    g.mouseMove (mouseEvent (g, g.pointForBand (band), juce::ModifierKeys()));
+    REQUIRE (g.getPopup().getBand() == band);
     auto& headphones = g.getPopup().getSoloButton();
     const auto start = juce::Point<float> (12.0f, 12.0f);
     headphones.mouseDown (mouseEvent (headphones, start, left));

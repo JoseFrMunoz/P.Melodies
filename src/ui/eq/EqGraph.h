@@ -35,8 +35,10 @@ namespace pm::ui
       (6 → 96 dB/oct, one step per notch). Ctrl+wheel: always the Q. Shift: finer Q steps.
     - Alt+click a point: bypass. Right click: menu with shape, bypass and delete.
     - Double click a point: type its frequency, gain and Q. Delete (Supr): deletes the band.
-    - Clicking a point opens its mini panel (EqBandPopup): bypass, shape, solo while held,
-      delete and values. A click on the background or Esc closes it (and deselects).
+    - The mini panel (EqBandPopup: bypass, shape, solo while held, delete and values) shows
+      while the pointer is over a point, or on its way to the panel, or over the panel, and while
+      a point is dragged or held, or a band held in solo (P.P., 2026-11-12). Selecting a band
+      (click) is what the editor below follows. Esc closes the row of shapes, then deselects.
 */
 class EqGraph final : public juce::Component
 {
@@ -110,8 +112,15 @@ public:
     /** Mini panel of the selected band (P.P.'s review of phase 1, §12). */
     EqBandPopup& getPopup() noexcept { return *popup; }
 
-    /** Places the mini panel on the selected band, or hides it. */
+    /** Shows the mini panel on the band it belongs to now (see panelBand()), or hides it. */
     void updatePopup();
+
+    /**
+        Band whose mini panel is shown, -1 for none: the one held in solo, else the one being
+        dragged or held, else the one under the pointer; the panel already shown stays while the
+        pointer is on it or between it and its point.
+    */
+    int panelBand() const;
 
     /** A band changed from the mini panel or the editor: redraw the curves and the panel. */
     void bandsChanged();
@@ -137,6 +146,7 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     void mouseMove (const juce::MouseEvent&) override;
+    void mouseEnter (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
@@ -163,6 +173,7 @@ private:
     bool curvesValid = false;
 
     int hovered = -1;
+    juce::Point<float> lastMouse { -1.0e6f, -1.0e6f }; // pointer in the display; far away when outside
     std::optional<LinePreview> linePreview;
     std::optional<juce::Point<float>> linePress; // pressed on the curve; becomes a band if dragged
     std::unique_ptr<EqBandPopup> popup;

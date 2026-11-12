@@ -8,6 +8,7 @@
 #include "ui/eq/EqBandPanel.h"
 #include "ui/eq/EqController.h"
 
+#include <functional>
 #include <memory>
 
 namespace pm::ui
@@ -29,6 +30,10 @@ class EqGraph;
 
     It sits above the point with a small arrow pointing at it, or below when there is no room,
     sliding briefly when it changes side. It never leaves the graph.
+
+    The graph decides which band it shows (P.P., 2026-11-12): the one under the pointer, or being
+    dragged, or held in solo. The pointer can travel from the point to the panel (getCorridor())
+    and stay on it (isHovered()) without the panel going away.
 */
 class EqBandPopup final : public juce::Component
 {
@@ -44,6 +49,16 @@ public:
 
     /** The card, without the arrow and the shape row, in the graph's coordinates. */
     juce::Rectangle<int> getCardBoundsInParent() const { return cardArea.translated (getX(), getY()); }
+
+    /** The pointer is over the panel (or its row of shapes). Kept up to date by a mouse listener. */
+    bool isHovered() const noexcept { return hovered; }
+    /** Called by the mouse listener; public so tests can move the pointer in and out. */
+    void setHovered (bool isOver, juce::Point<float> positionInParent);
+    /** Tells the graph the pointer entered or left the panel (and where, in the graph's coordinates). */
+    std::function<void (bool isOver, juce::Point<float> positionInParent)> onHoverChanged;
+
+    /** Area between the point and the card (graph coordinates): crossing it keeps the panel open. */
+    juce::Rectangle<float> getCorridor() const noexcept { return corridor; }
 
     /** Text of the two value lines, for tests: {frequency, note, gain or slope, Q}. */
     juce::StringArray getValueTexts() const { return { frequencyText, noteText, leftText, rightText }; }
@@ -77,6 +92,7 @@ public:
 private:
     class ShapeButton;
     class SoloButton;
+    class HoverTracker;
 
     void refreshContent();
     void layout();
@@ -102,6 +118,10 @@ private:
     float targetY = 0.0f;
     bool animating = false;
     bool placed = false;
+
+    bool hovered = false;
+    std::unique_ptr<HoverTracker> hoverTracker;
+    juce::Rectangle<float> corridor;
 
     // Local geometry.
     juce::Rectangle<int> cardArea;

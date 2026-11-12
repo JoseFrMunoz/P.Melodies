@@ -503,9 +503,13 @@ TEST_CASE ("Snapshot of the interface for visual review", "[.snapshot]")
         controller.setSelectedBand (bell);
         runProcessor (processor, makeNoise (2, 48000, 0.2f), blockSizes (48000, 512));
         eqPanel.refresh();
+        auto& display = eqPanel.getGraph();
+        display.beginDrag (bell, display.pointForBand (bell)); // the point held: its mini panel shows
+        display.updatePopup();
         pm.getFooter().refresh (1.0 / 30.0);
         pm.getChainPanel().refreshStatus();
         savePng (pm.createComponentSnapshot (pm.getLocalBounds(), true, 2.0f), "01b-eq");
+        display.endDrag();
 
         // Solo held from the mini panel and dragged to 1.1 kHz: the range heard, the rest dimmed.
         auto& graph = eqPanel.getGraph();

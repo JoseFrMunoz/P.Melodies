@@ -125,6 +125,16 @@ EqGraph::EqGraph (EqController& c) : controller (c), popup (std::make_unique<EqB
     setWantsKeyboardFocus (true);
     setMouseClickGrabsKeyboardFocus (true);
     addChildComponent (*popup);
+    popup->onHoverChanged = [this] (bool isOver, juce::Point<float> position)
+    {
+        if (! isOver)
+        {
+            // Back on the display (or out of it): what is under the pointer there.
+            lastMouse = getLocalBounds().toFloat().contains (position) ? position : juce::Point<float> { -1.0e6f, -1.0e6f };
+            hovered = bandAt (lastMouse);
+        }
+        updatePopup();
+    };
 }
 
 EqGraph::~EqGraph() = default;
@@ -229,6 +239,7 @@ void EqGraph::beginDrag (int index, juce::Point<float> position)
     controller.setSelectedBand (index);
     controller.beginGesture (index, EqField::frequency);
     controller.beginGesture (index, dragUsesGain ? EqField::gain : EqField::q);
+    updatePopup(); // held: its mini panel shows
 }
 
 void EqGraph::dragTo (juce::Point<float> position, bool fine)
@@ -267,6 +278,7 @@ void EqGraph::endDrag()
     controller.endGesture (dragging, EqField::frequency);
     controller.endGesture (dragging, dragUsesGain ? EqField::gain : EqField::q);
     dragging = -1;
+    updatePopup(); // stays while the pointer is still on the point
 }
 
 void EqGraph::showGain (double gainDb)
@@ -316,10 +328,25 @@ void EqGraph::bandsChanged()
     repaint();
 }
 
+int EqGraph::panelBand() const
+{
+    const auto active = [this] (int b) { return b >= 0 && controller.getBand (b).active; };
+    if (active (soloBand))
+        return soloBand;
+    if (active (dragging))
+        return dragging;
+    if (active (hovered))
+        return hovered;
+    const auto shown = popup->getBand();
+    if (active (shown) && popup->isVisible() && (popup->isHovered() || popup->getCorridor().contains (lastMouse)))
+        return shown;
+    return -1;
+}
+
 void EqGraph::updatePopup()
 {
-    const auto selected = controller.getSelectedBand();
-    popup->update (selected, selected >= 0 ? pointForBand (selected) : juce::Point<float>(), getLocalBounds());
+    const auto band = panelBand();
+    popup->update (band, band >= 0 ? pointForBand (band) : juce::Point<float>(), getLocalBounds());
 }
 
 void EqGraph::beginSolo (int index)
@@ -499,6 +526,9 @@ void EqGraph::refresh()
     if (controller.getSelectedBand() >= 0 && ! controller.getBand (controller.getSelectedBand()).active)
         controller.setSelectedBand (-1);
 
+    // Automation can move a point under a still pointer (or away from it).
+    if (dragging < 0 && ! popup->isHovered())
+        hovered = bandAt (lastMouse);
     updatePopup(); // follows automation and changes from the editor
     repaint();
 }
@@ -797,12 +827,14 @@ std::optional<EqGraph::LinePreview> EqGraph::linePreviewAt (juce::Point<float> p
 
 void EqGraph::mouseMove (const juce::MouseEvent& e)
 {
+    lastMouse = e.position;
     const auto band = bandAt (e.position);
     if (band != hovered)
     {
         hovered = band;
         repaint();
     }
+    updatePopup();
     const auto preview = linePreviewAt (e.position);
     if (preview.has_value() || linePreview.has_value())
     {
@@ -812,16 +844,30 @@ void EqGraph::mouseMove (const juce::MouseEvent& e)
     setMouseCursor (band >= 0 || preview.has_value() ? juce::MouseCursor::DraggingHandCursor : juce::MouseCursor::CrosshairCursor);
 }
 
-void EqGraph::mouseExit (const juce::MouseEvent&)
+void EqGraph::mouseEnter (const juce::MouseEvent& e)
+{
+    mouseMove (e);
+}
+
+void EqGraph::mouseExit (const juce::MouseEvent& e)
 {
     hovered = -1;
     linePreview.reset();
+    // Into the mini panel (a child): it stays; anywhere else, it goes.
+    const auto local = (e.position - popup->getPosition().toFloat()).roundToInt();
+    if (popup->isVisible() && popup->hitTest (local.x, local.y))
+        popup->setHovered (true, e.position);
+    else
+        lastMouse = { -1.0e6f, -1.0e6f };
+    updatePopup();
     repaint();
 }
 
 void EqGraph::mouseDown (const juce::MouseEvent& e)
 {
     const auto band = bandAt (e.position);
+    lastMouse = e.position;
+    hovered = band;
 
     if (e.mods.isPopupMenu())
     {
@@ -862,6 +908,7 @@ void EqGraph::mouseDown (const juce::MouseEvent& e)
 
 void EqGraph::mouseDrag (const juce::MouseEvent& e)
 {
+    lastMouse = e.position;
     if (linePress.has_value())
     {
         const auto start = *linePress;
@@ -879,9 +926,11 @@ void EqGraph::mouseDrag (const juce::MouseEvent& e)
     dragTo (e.position, e.mods.isCtrlDown() || e.mods.isCommandDown());
 }
 
-void EqGraph::mouseUp (const juce::MouseEvent&)
+void EqGraph::mouseUp (const juce::MouseEvent& e)
 {
     linePress.reset();
+    lastMouse = e.position;
+    hovered = bandAt (e.position);
     endDrag();
 }
 
@@ -893,6 +942,8 @@ void EqGraph::mouseDoubleClick (const juce::MouseEvent& e)
         showValueEditor (band);
     else
         createBandAt (e.position);
+    hovered = bandAt (e.position); // the new point is under the pointer: its panel shows
+    updatePopup();
 }
 
 void EqGraph::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& wheelDetails)
@@ -915,7 +966,7 @@ bool EqGraph::keyPressed (const juce::KeyPress& key)
     }
     if (key == juce::KeyPress::escapeKey)
     {
-        // First the row of shapes, then the mini panel (deselecting the band).
+        // First the row of shapes, then the selection (the band the editor below shows).
         if (popup->isShapeRowOpen())
         {
             popup->setShapeRowOpen (false);
