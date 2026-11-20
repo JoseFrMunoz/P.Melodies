@@ -5,6 +5,7 @@
 // Phase 0 tests of the whole signal path: passthrough, latency, reordering, bypass, global
 // section, extreme values and sample-rate / block-size coverage.
 
+#include "Measurement.h"
 #include "TestHelpers.h"
 
 #include "core/ChainOrder.h"
@@ -503,13 +504,26 @@ TEST_CASE ("The safety clipper is bit-exact below ceiling - 3 dB and can be swit
 
     SECTION ("Switched off")
     {
+        // The compressor off: at its default threshold of 0 dB it compresses what goes above
+        // 0 dBFS (§12, 2026-11-20), and this checks the clipper alone.
         auto p = plainParameters();
+        p.moduleEnabled[(size_t) ModuleId::compressor] = false;
         auto engine = makeEngine (createModule, 48000.0, 512, 1, p);
         const auto latency = engine->getLatencySamples();
         const auto input = makeSine (1, 48000, 440.0, 48000.0, 2.0f);
         const auto out = runEngine (*engine, input, blockSizes (48000, 512), p);
         CHECK (countPassthroughMismatches (input, out, latency) == 0);
         CHECK (peakOf (out) > 1.9f);
+    }
+
+    SECTION ("Switched off, with every module at its defaults: the compressor takes what goes above 0 dBFS")
+    {
+        auto p = plainParameters();
+        auto engine = makeEngine (createModule, 48000.0, 512, 1, p);
+        const auto input = makeSine (1, 48000, 440.0, 48000.0, 2.0f); // +6 dBFS
+        const auto out = runEngine (*engine, input, blockSizes (48000, 512), p);
+        // 4:1 above 0 dBFS: about +1.5 dBFS.
+        CHECK (measure::toDb (peakOf (out, 24000, 48000)) == Catch::Approx (1.5).margin (0.15));
     }
 
     SECTION ("Switching it on and off is smooth")

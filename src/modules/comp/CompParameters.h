@@ -71,16 +71,15 @@ struct Parameters
     }
 
     /**
-        True when these settings cannot change the sound: nothing to listen to and either the mix
-        is 0 % or the curve starts above 0 dBFS with no makeup. With the default threshold of
-        0 dB the compressor rests (§12: it does nothing until the threshold goes down).
+        True when these settings can only touch what goes above 0 dBFS: nothing to listen to, no
+        makeup and a curve that starts at 0 dBFS or higher (the default threshold of 0 dB with a
+        hard knee). The compressor then waits on standby, bit-exact, until something gets close to
+        0 dBFS, and compresses what goes above it (§12, 2026-11-20).
     */
-    bool isNeutral() const noexcept
+    bool onlyActsAboveFullScale() const noexcept
     {
         if (listen)
             return false;
-        if (! (mix > 0.0f))
-            return true;
         const auto makeup = totalMakeupDb();
         return dsp::comp::StaticCurve (curve()).kneeStartDb() >= 0.0 && ! (makeup > 0.0 || makeup < 0.0);
     }

@@ -85,6 +85,15 @@ juce::AudioBuffer<float> tone (double hz, double levelDb, double seconds, double
     return makeSine (channels, (int) (seconds * fs), hz, fs, (float) std::pow (10.0, levelDb / 20.0));
 }
 
+float maxDifference (const juce::AudioBuffer<float>& a, const juce::AudioBuffer<float>& b, int from, int to)
+{
+    auto worst = 0.0f;
+    for (int ch = 0; ch < juce::jmin (a.getNumChannels(), b.getNumChannels()); ++ch)
+        for (int i = juce::jmax (0, from); i < juce::jmin (to, a.getNumSamples(), b.getNumSamples()); ++i)
+            worst = juce::jmax (worst, std::abs (a.getSample (ch, i) - b.getSample (ch, i)));
+    return worst;
+}
+
 /** Level (dB) of a tone at `hz` over the last `seconds` of a channel. */
 double toneLevelDb (const juce::AudioBuffer<float>& x, double hz, double fs, int channel = 0, double seconds = 0.2)
 {
@@ -132,15 +141,83 @@ TEST_CASE ("Compressor module: latency is 20 ms plus the oversampling, whatever 
 
 TEST_CASE ("Compressor module: the default settings leave the sound untouched, bit for bit", "[comp][module][phase2]")
 {
-    CompRig rig;
-    const auto input = makeNoise (2, 48000, 0.5f);
-    const auto output = rig.run (input);
-    CHECK_FALSE (rig.module.isWetPathActive());
+    // Below 0 dBFS, also with the oversampling of the default playing quality (2x).
+    for (const auto minimumOversampling : { 0, 1 })
+    {
+        INFO ("minimum oversampling index " << minimumOversampling);
+        CompRig rig;
+        rig.module.setMinimumOversamplingIndex (minimumOversampling);
+        const auto input = makeNoise (2, 48000, 0.5f);
+        const auto output = rig.run (input);
+        CHECK_FALSE (rig.module.isWetPathActive());
+        CHECK (rig.module.isWetPathComputed()); // on standby: it keeps watching for peaks above 0 dBFS
 
-    const auto latency = rig.latency();
-    for (int ch = 0; ch < 2; ++ch)
-        for (int i = latency; i < input.getNumSamples(); ++i)
-            REQUIRE (output.getSample (ch, i) == input.getSample (ch, i - latency));
+        const auto latency = rig.latency();
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = latency; i < input.getNumSamples(); ++i)
+                REQUIRE (output.getSample (ch, i) == input.getSample (ch, i - latency));
+    }
+}
+
+TEST_CASE ("Compressor module: at the default threshold of 0 dB it compresses what goes above 0 dBFS", "[comp][module][phase2]")
+{
+    // P.P. (2026-11-20): with the threshold at 0 dB the compressor must compress what goes above
+    // 0 dBFS (it used to rest). It waits on standby, bit-exact, and the first peak is already
+    // compressed like with an always-running compressor.
+    const auto fs = 48000.0;
+    const int burstStart = 94 * 256; // at the start of a block: the latest the standby can notice it
+    const int burstLength = (int) (0.3 * fs);
+    const int numSamples = burstStart + burstLength + (int) (3.0 * fs);
+
+    juce::AudioBuffer<float> input (2, numSamples);
+    for (int i = 0; i < numSamples; ++i)
+    {
+        const auto amplitude = i >= burstStart && i < burstStart + burstLength ? 2.0f : 0.5f; // +6 / −6 dBFS
+        const auto x = amplitude * (float) std::sin (twoPi * 1000.0 * i / fs);
+        input.setSample (0, i, x);
+        input.setSample (1, i, x);
+    }
+
+    for (const auto minimumOversampling : { 0, 1 })
+        for (const auto lookahead : { 0.0f, 20.0f })
+        {
+            INFO ("minimum oversampling index " << minimumOversampling << ", lookahead " << lookahead << " ms");
+
+            CompRig standby;
+            CompRig reference; // the same settings, a hair below 0 dB: it never goes on standby
+            reference.p().thresholdDb = -0.001f;
+
+            for (auto* rig : { &standby, &reference })
+            {
+                rig->module.setMinimumOversamplingIndex (minimumOversampling);
+                rig->p().lookaheadMs = lookahead;
+            }
+
+            const auto output = standby.run (input);
+            const auto expected = reference.run (input);
+            const auto latency = standby.latency();
+
+            // 1. Before the burst: the input, bit for bit.
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = latency; i < burstStart; ++i)
+                    REQUIRE (output.getSample (ch, i) == input.getSample (ch, i - latency));
+
+            // 2. From the burst on: like the reference, from its first peak.
+            const auto burstEnd = burstStart + latency + burstLength + (int) (0.5 * fs);
+            // (The reference threshold alone accounts for about 1e-4; uncompressed peaks would differ by 0.8.)
+            CHECK (maxDifference (output, expected, burstStart, burstEnd) < 1.0e-3f);
+
+            // 4:1 above 0 dB: +6 dBFS comes out at +1.5 dBFS (before the lookahead starts the release).
+            const auto settledEnd = burstStart + latency + burstLength - (int) (0.025 * fs);
+            CHECK (measure::toDb (peakOf (output, settledEnd - (int) (0.05 * fs), settledEnd)) == Catch::Approx (1.5).margin (0.1));
+
+            // 3. Back on standby once the gain has come back: bit-exact again.
+            CHECK_FALSE (standby.module.isWetPathActive());
+            CHECK (standby.module.isWetPathComputed());
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = numSamples - (int) (0.5 * fs); i < numSamples; ++i)
+                    REQUIRE (output.getSample (ch, i) == input.getSample (ch, i - latency));
+        }
 }
 
 TEST_CASE ("Compressor module: steady tones follow the static curve in every style", "[comp][module][phase2]")
@@ -388,7 +465,7 @@ TEST_CASE ("Compressor module: the meter reports the gain reduction and the leve
     CHECK (last.outputDb == Catch::Approx (-15.0).margin (0.15));
     CHECK (last.gainDb == Catch::Approx (-15.0).margin (0.1));
 
-    // While resting (threshold back to 0 dB) the graph keeps scrolling with no reduction.
+    // On standby (threshold back to 0 dB) the graph keeps scrolling with no reduction.
     rig.p().thresholdDb = 0.0f;
     rig.run (makeSine (2, (int) (3.0 * fs), 1000.0, fs, 0.5f));
     CHECK_FALSE (rig.module.isWetPathActive());

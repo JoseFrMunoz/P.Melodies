@@ -132,7 +132,11 @@ entrada ─ retardo (20 ms) ─ × ganancia × makeup ─ mezcla con la entrada 
   - **En su posición más alta (20 kHz), el pasa-bajos queda abierto y no filtra.** Un corte tan cerca de Nyquist dejaría una pequeña joroba por debajo: +0,8 dB a 10 kHz con 48 kHz.
 - **Escuchar:** la salida pasa a ser la señal del detector, ya filtrada (interna o externa), con un fundido de 20 ms. No es un parámetro ni se guarda, igual que el solo del EQ.
 - **Mix, makeup y auto-gain:** se deslizan en 20 ms. Mix 0 % devuelve la entrada retrasada, idéntica bit a bit.
-- **En reposo:** si el knee entero queda por encima de 0 dBFS (threshold a 0 dB con knee 0, los valores por defecto), no hay makeup ni escucha, y la reducción ya ha vuelto, la ruta procesada no se calcula y la salida es la entrada retrasada, idéntica bit a bit. Por eso el plugin con los valores por defecto sigue siendo transparente, y ese estado no gasta CPU.
+- **Threshold a 0 dB (en espera):** si el knee entero queda por encima de 0 dBFS (threshold a 0 dB con knee 0, los valores por defecto) y no hay makeup ni escucha, el compresor solo puede actuar sobre lo que pase de 0 dBFS, y eso es lo que hace (§12, 2026-11-20). Mientras no llega nada que pueda mover la ganancia, la salida es la entrada retrasada, idéntica bit a bit, a cualquier calidad:
+  - El compresor sigue calculando (gasta CPU, ver §9) y mira el sidechain ya filtrado **antes** de su retardo. Si alguna muestra llega al inicio del knee (3,01 dB menos en los estilos RMS, que leen hasta eso por encima de los picos, y 0,1 dB más de margen), deja la espera en ese mismo bloque con un fundido de 1 ms.
+  - El detector ve esa muestra 20 ms − lookahead después, así que el compresor ya suena antes de que la ganancia se mueva. El primer pico se comprime igual que con el compresor siempre activo (test: diferencia < 0,001).
+  - Vuelve a la espera cuando la ganancia ha vuelto (> −0,0001 dB), el nivel del detector está por debajo de ese punto y no ha llegado nada durante 50 ms (los 20 ms del retardo, los 5 ms de la ventana de picos y margen). La vuelta es un fundido de 10 ms.
+  - Con mix 0 % no se calcula nada: la salida es la entrada retrasada.
 - **Sidechain externo sin señal:** si se elige «Externo» y no llega nada (por debajo de −100 dBFS durante 0,3 s), no comprime y la interfaz lo indica.
 - **Medidores:** un punto cada 5 ms (pico de entrada, pico de salida y la reducción más profunda), más la reducción y el nivel del detector actuales.
 
@@ -159,6 +163,7 @@ Texto para el futuro botón de información del módulo (§13, 2026-11-12).
   - *Bus:* nivel medio, algo de realimentación y release en dos etapas: el «pegamento» de grupos y buses.
   - *Punch:* deja pasar el principio de cada golpe y recupera rápido, para dar pegada.
   - *Pumping:* el release vuelve despacio al principio y rápido al final, con un bombeo marcado; más aún con Hold.
+- **Threshold a 0 dB** (el valor por defecto): el compresor solo toca lo que pase de 0 dBFS; todo lo demás sale idéntico. Para comprimir la música, baja el threshold.
 - **Auto-gain:** sube la salida lo que se calcula a partir del threshold, el ratio y el knee, para que los niveles a medio camino entre el threshold y 0 dBFS suenen igual. No sube y baja con la música. El Makeup se suma encima.
 - **Auto-release:** el release se alarga tras compresiones largas y se mantiene corto tras golpes sueltos. El knob Release escala el efecto.
 - **Estéreo:** los dos canales reciben siempre la misma reducción, así que la imagen no se mueve.

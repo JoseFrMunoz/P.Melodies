@@ -31,6 +31,10 @@ namespace pm::comp
     - Listen plays the filtered sidechain instead of the output, with a 20 ms crossfade.
     - Makeup, auto-gain, mix and listen glide over 20 ms; the curve settings glide inside the
       detector.
+    - At the default threshold of 0 dB (a curve that starts at 0 dBFS or higher, no makeup) the
+      module waits on standby: it keeps detecting, but plays the input bit-exact until the
+      filtered sidechain gets close enough to the knee to move the gain, 20 ms − lookahead before
+      the detector sees it.
 */
 class CompressorModule final : public ModuleBase
 {
@@ -45,6 +49,7 @@ public:
     static constexpr double glideSeconds = 0.020;
     static constexpr double silentSidechainSeconds = 0.3;
     static constexpr float silenceLevel = 1.0e-5f; // −100 dBFS
+    static constexpr double standbyQuietSeconds = 0.050; // > 20 ms of delay + 5 ms of peak window
 
 protected:
     void prepareCore (double baseRate, int blockSize, int numChannels) override;
@@ -52,12 +57,13 @@ protected:
     void resetCore() noexcept override;
     void processCore (juce::dsp::AudioBlock<float> block, const SidechainBlock* sidechain) noexcept override;
     bool isCoreNeutral() const noexcept override;
+    bool isCoreIdle() const noexcept override;
     int getRequestedOversamplingIndex() const noexcept override { return pending.oversamplingIndex; }
     int getCoreLatencySamples() const noexcept override { return maxLookaheadSamples; }
     int getCoreSettleSamples() const noexcept override { return settleSamples; }
     void copyCoreStateFrom (const ModuleBase& other) noexcept override;
     void observe (juce::dsp::AudioBlock<const float> alignedInput, juce::dsp::AudioBlock<const float> output,
-                  const SidechainBlock* sidechain, bool wetComputed) noexcept override;
+                  const SidechainBlock* sidechain, bool wetHeard) noexcept override;
 
 private:
     using LinearSmoother = juce::SmoothedValue<float, juce::ValueSmoothingTypes::Linear>;
@@ -71,6 +77,7 @@ private:
     };
 
     void applySettings (bool jump) noexcept;
+    void trackStandbyTrigger (const float* sc0, const float* sc1, size_t numSamples) noexcept;
     void updateFilter (FilterState& filter, const SidechainFilter& wanted, dsp::eq::FilterType type, bool jump) noexcept;
 
     Parameters pending;
@@ -89,6 +96,13 @@ private:
     int maxLookaheadSamples = 0; // base rate
     int settleSamples = 0;
     int numChannels = 2;
+
+    // Standby (threshold 0 dB): how long the filtered sidechain has stayed below the level that
+    // could move the gain (core-rate samples), and that level (linear).
+    int quietSamples = 0;
+    int quietSamplesNeeded = 1;
+    float standbyTrigger = 1.0f;
+    double standbyTriggerDb = 0.0;
 
     // For the meters (base rate): the deepest gain of each base-rate sample of the last block.
     std::vector<float> gainTrace;

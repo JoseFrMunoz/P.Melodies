@@ -62,13 +62,14 @@ El EQ no tiene latencia (v1, sin oversampling) y los otros tres módulos reserva
 `ModuleBase` decide en cada bloque si la ruta procesada debe sonar:
 
 - **Apagado o neutro** (los ajustes actuales no cambian nada): la ruta procesada no se calcula y la salida es la entrada retrasada, idéntica bit a bit. Así un preset neutro no altera el audio y no gasta CPU.
+- **En espera** (desde el cierre de la fase 2): el módulo solo actúa en momentos raros y ahora no viene ninguno (el compresor a 0 dB mientras nada se acerca a 0 dBFS, `isCoreIdle`). La ruta procesada se sigue calculando, para ver venir lo siguiente, pero la salida es la entrada retrasada, idéntica bit a bit. Si el núcleo deja de estar en espera, la ruta procesada entra desde el principio de ese bloque con un fundido de 1 ms; como sigue caliente, sin *pre-roll*. Para volver a la espera hay un fundido de 10 ms.
 - **Encender:** se reinician los filtros, se procesa en silencio durante un *pre-roll* que los rellena y después hay un fundido de entrada de 10 ms.
 - **Apagar:** fundido de salida de 10 ms hasta la ruta seca alineada.
 - **Cambiar el factor de oversampling:** fundido de salida, cambio, *pre-roll* y fundido de entrada, todo sin clics.
 
 **Sidechain:** un módulo que lee el sidechain externo (el compresor) lo recibe a su frecuencia de oversampling. `ModuleBase` lo sobremuestrea con los mismos filtros que el audio, así que las dos señales llegan alineadas.
 
-**Medidores:** al final de cada bloque, el módulo del juego que se oye recibe su entrada alineada, su salida y el sidechain (`ModuleBase::observe`). El compresor los usa para su gráfico de niveles: un punto cada 5 ms por la cola sin bloqueos de la fase 0, más la reducción actual en un atómico.
+**Medidores:** al final de cada bloque, el módulo del juego que se oye recibe su entrada alineada, su salida, el sidechain y si la ruta procesada se oye en ese bloque (`ModuleBase::observe`). El compresor los usa para su gráfico de niveles: un punto cada 5 ms por la cola sin bloqueos de la fase 0, más la reducción actual en un atómico.
 
 ## Reordenado sin clics
 

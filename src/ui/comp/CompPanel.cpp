@@ -24,7 +24,7 @@ struct KnobSpec
 
 const std::array<KnobSpec, CompPanel::numKnobs> knobSpecs { {
     { param::id::compThreshold, "Threshold",
-      "Threshold\nNivel a partir del cual empieza a comprimir. A 0 dB el compresor est\xc3\xa1 en reposo." },
+      "Threshold\nNivel a partir del cual empieza a comprimir. A 0 dB solo comprime lo que pase de 0 dBFS." },
     { param::id::compRatio, "Ratio",
       "Ratio\nCu\xc3\xa1nto comprime por encima del threshold: con 4:1, cada 4 dB de m\xc3\xa1s salen como 1. "
       "Con \xe2\x88\x9e:1 no pasa del threshold. En Vocal es autom\xc3\xa1tico." },

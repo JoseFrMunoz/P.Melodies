@@ -25,6 +25,10 @@ namespace pm
     - The wet path is padded so it always has the same latency, whatever the oversampling factor.
     - When the module is bypassed, or its current settings make it an identity ("neutral"), the
       wet path is not computed at all and the output is the dry path: bit-exact and cheap.
+    - When the module only acts on rare events and none is coming ("idle", e.g. the compressor at
+      a threshold of 0 dB with everything below 0 dBFS), the wet path keeps running so the module
+      sees the next event coming, but the output is the dry path (standby): bit-exact. When the
+      core stops being idle, the wet path fades in from the start of that block in 1 ms.
     - Engaging fades in after a pre-roll that refills the filters; disengaging fades out.
       Oversampling factor changes go through the same fade-out → switch → pre-roll → fade-in
       sequence, so changing the quality never clicks.
@@ -71,7 +75,10 @@ public:
     int getActiveOversamplingIndex() const noexcept { return activeOversamplingIndex; }
 
     /** True while the wet path contributes to the output. */
-    bool isWetPathActive() const noexcept { return stage != Stage::disengaged; }
+    bool isWetPathActive() const noexcept { return stage != Stage::disengaged && stage != Stage::standby; }
+
+    /** True while the wet path is computed (contributing or on standby). */
+    bool isWetPathComputed() const noexcept { return stage != Stage::disengaged; }
 
     /**
         Copies the dynamic state from the same module in another chain, for the reorder crossfade.
@@ -81,6 +88,7 @@ public:
     void copyStateFrom (const ModuleBase& other) noexcept;
 
     static constexpr double fadeSeconds = 0.010;
+    static constexpr double standbyFadeSeconds = 0.001;
     static constexpr int maxSidechainChannels = 2;
 
 protected:
@@ -98,6 +106,14 @@ protected:
     /** True when the current settings make processCore() an identity. */
     virtual bool isCoreNeutral() const noexcept { return false; }
 
+    /**
+        True when processCore() must keep running but its output equals its input, now and for at
+        least the next 1 ms: the module then plays the dry path (standby). Asked at the start of
+        each block and again after processCore(), so a core can leave standby in the same block
+        that brings the event (its own delay must give it that 1 ms).
+    */
+    virtual bool isCoreIdle() const noexcept { return false; }
+
     /** The module's own oversampling selector (factor index). */
     virtual int getRequestedOversamplingIndex() const noexcept { return 0; }
 
@@ -112,10 +128,11 @@ protected:
     /**
         Called at the end of process() on the module set that is heard, at the base rate: the
         input aligned with the output (the dry path), the output, the host's sidechain and whether
-        processCore() ran in this block. For meters; must not allocate.
+        the output of processCore() is heard in this block (false when it was not computed or is
+        on standby). For meters; must not allocate.
     */
     virtual void observe (juce::dsp::AudioBlock<const float> /*alignedInput*/, juce::dsp::AudioBlock<const float> /*output*/,
-                          const SidechainBlock* /*sidechain*/, bool /*wetComputed*/) noexcept {}
+                          const SidechainBlock* /*sidechain*/, bool /*wetHeard*/) noexcept {}
 
 private:
     enum class Stage
@@ -124,12 +141,15 @@ private:
         preRoll,
         fadingIn,
         engaged,
-        fadingOut
+        fadingOut,
+        fadingToStandby,
+        standby
     };
 
     int desiredOversamplingIndex() const noexcept;
     void updateStageAtBlockStart() noexcept;
     float nextGain() noexcept;
+    void leaveStandby() noexcept;
     void applyOversamplingIndex (int index) noexcept;
 
     const ModuleId id;
@@ -156,8 +176,11 @@ private:
 
     Stage stage = Stage::disengaged;
     float gain = 0.0f;
-    float gainStep = 1.0f;
+    float gainStep = 1.0f;     // fades in and out (fadeSeconds)
+    float standbyStep = 1.0f;  // leaving standby (standbyFadeSeconds)
+    float riseStep = 1.0f;     // the step of the current fade in
     int preRollRemaining = 0;
+    bool coreIdle = false;     // isCoreIdle() at the start of the block
 };
 
 } // namespace pm

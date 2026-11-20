@@ -38,6 +38,8 @@ void ModuleBase::prepare (const juce::dsp::ProcessSpec& spec)
     totalLatency = getCoreLatencySamples() + maxOversamplingLatency;
     preRollSamples = totalLatency + maxOversamplingLatency + getCoreSettleSamples();
     gainStep = (float) (1.0 / juce::jmax (1.0, fadeSeconds * baseSampleRate));
+    standbyStep = (float) (1.0 / juce::jmax (1.0, standbyFadeSeconds * baseSampleRate));
+    riseStep = gainStep;
 
     dryBuffer.setSize (numChannels, maxBlockSize, false, true, false);
     dryDelay.prepare (numChannels, totalLatency);
@@ -65,7 +67,9 @@ void ModuleBase::reset()
 
     stage = Stage::disengaged;
     gain = 0.0f;
+    riseStep = gainStep;
     preRollRemaining = 0;
+    coreIdle = false;
 }
 
 void ModuleBase::setMinimumOversamplingIndex (int index) noexcept
@@ -96,6 +100,7 @@ void ModuleBase::updateStageAtBlockStart() noexcept
     const auto needsFactorChange = desiredIndex != activeOversamplingIndex;
     const auto shouldRun = ! bypassed && ! isCoreNeutral();
     const auto wantsWet = shouldRun && ! needsFactorChange;
+    coreIdle = wantsWet && isCoreIdle();
 
     switch (stage)
     {
@@ -103,11 +108,35 @@ void ModuleBase::updateStageAtBlockStart() noexcept
         case Stage::fadingIn:
             if (! wantsWet)
                 stage = Stage::fadingOut;
+            else if (coreIdle)
+                stage = Stage::fadingToStandby;
             break;
 
         case Stage::fadingOut:
             if (wantsWet)
-                stage = Stage::fadingIn;
+            {
+                stage = coreIdle ? Stage::fadingToStandby : Stage::fadingIn;
+                riseStep = gainStep;
+            }
+            break;
+
+        case Stage::fadingToStandby:
+            if (! wantsWet)
+                stage = Stage::fadingOut;
+            else if (! coreIdle)
+                leaveStandby();
+            break;
+
+        case Stage::standby:
+            if (! wantsWet)
+            {
+                stage = Stage::disengaged;
+                gain = 0.0f;
+            }
+            else if (! coreIdle)
+            {
+                leaveStandby();
+            }
             break;
 
         case Stage::preRoll:
@@ -141,8 +170,15 @@ void ModuleBase::updateStageAtBlockStart() noexcept
             stage = Stage::preRoll;
             preRollRemaining = preRollSamples;
             gain = 0.0f;
+            coreIdle = isCoreIdle(); // after the reset and a factor change (asked before, it said no)
         }
     }
+}
+
+void ModuleBase::leaveStandby() noexcept
+{
+    stage = Stage::fadingIn;
+    riseStep = standbyStep;
 }
 
 float ModuleBase::nextGain() noexcept
@@ -155,11 +191,17 @@ float ModuleBase::nextGain() noexcept
                 --preRollRemaining;
                 return 0.0f;
             }
+            if (coreIdle)
+            {
+                stage = Stage::standby;
+                return 0.0f;
+            }
             stage = Stage::fadingIn;
+            riseStep = gainStep;
             [[fallthrough]];
 
         case Stage::fadingIn:
-            gain += gainStep;
+            gain += riseStep;
             if (gain >= 1.0f)
             {
                 gain = 1.0f;
@@ -168,17 +210,19 @@ float ModuleBase::nextGain() noexcept
             return gain;
 
         case Stage::fadingOut:
+        case Stage::fadingToStandby:
             gain -= gainStep;
             if (gain <= 0.0f)
             {
                 gain = 0.0f;
-                stage = Stage::disengaged;
+                stage = stage == Stage::fadingOut ? Stage::disengaged : Stage::standby;
             }
             return gain;
 
         case Stage::engaged:
             return 1.0f;
 
+        case Stage::standby:
         case Stage::disengaged:
             break;
     }
@@ -209,12 +253,12 @@ void ModuleBase::process (juce::dsp::AudioBlock<float> block, const SidechainBlo
     // 2. Decide what the wet path does during this block.
     updateStageAtBlockStart();
 
-    const auto finish = [&] (bool wetComputed)
+    const auto finish = [&] (bool wetHeard)
     {
         if (tap != nullptr)
             tap->push (block, dsp::AnalyzerTap::Point::post);
         if (analyzerListening)
-            observe (dry, block, sidechain, wetComputed);
+            observe (dry, block, sidechain, wetHeard);
     };
 
     if (stage == Stage::disengaged)
@@ -250,7 +294,21 @@ void ModuleBase::process (juce::dsp::AudioBlock<float> block, const SidechainBlo
 
     debug::checkFinite (block, "module wet path");
 
-    // 4. Fade between dry and wet.
+    // 4. A core on standby that saw an event coming in this block: the wet path fades in from the
+    //    start of the block, before the event reaches the output.
+    if (stage == Stage::preRoll)
+        coreIdle = coreIdle && isCoreIdle(); // the pre-roll may end in this block
+    else if ((stage == Stage::standby || stage == Stage::fadingToStandby) && ! isCoreIdle())
+        leaveStandby();
+
+    if (stage == Stage::standby)
+    {
+        block.copyFrom (dry);
+        finish (false);
+        return;
+    }
+
+    // 5. Fade between dry and wet.
     if (stage == Stage::engaged)
     {
         finish (true);
@@ -300,7 +358,9 @@ void ModuleBase::copyStateFrom (const ModuleBase& other) noexcept
     minimumOversamplingIndex = other.minimumOversamplingIndex;
     stage = other.stage;
     gain = other.gain;
+    riseStep = other.riseStep;
     preRollRemaining = other.preRollRemaining;
+    coreIdle = other.coreIdle;
 
     copyCoreStateFrom (other);
 }

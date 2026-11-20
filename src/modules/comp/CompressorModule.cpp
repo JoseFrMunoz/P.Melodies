@@ -23,6 +23,11 @@ bool sameFilter (const SidechainFilter& a, const SidechainFilter& b) noexcept
 
 float toDb (float x) noexcept { return x > 1.0e-6f ? 20.0f * std::log10 (x) : -120.0f; }
 
+// The RMS detectors read 3.01 dB above the level of a sine (§3 of docs/dsp/compresor.md), so at
+// most that much above the highest sample. Plus a small safety margin.
+constexpr double rmsReadingAbovePeakDb = 3.0102999566398120;
+constexpr double standbyMarginDb = 0.1;
+
 constexpr double dbToNepers = 0.11512925464970229; // ln (10) / 20
 } // namespace
 
@@ -58,6 +63,8 @@ void CompressorModule::setCoreSampleRate (double sampleRate) noexcept
     factor = juce::jmax (1, (int) std::lround (sampleRate / baseSampleRate));
     audioDelay.setDelay (juce::jmin (audioDelay.getMaximumDelay(), maxLookaheadSamples * factor));
     dynamics.setSampleRate (sampleRate);
+    quietSamplesNeeded = juce::jmax (1, (int) std::lround (standbyQuietSeconds * sampleRate));
+    quietSamples = quietSamplesNeeded;
 
     for (auto* s : { &makeup, &mix, &listen })
         s->reset (sampleRate, glideSeconds);
@@ -82,6 +89,7 @@ void CompressorModule::resetCore() noexcept
     applySettings (true);
     dynamics.reset();
     gainTraceLength = 0;
+    quietSamples = quietSamplesNeeded; // the delay lines are empty: nothing loud is on its way
 }
 
 void CompressorModule::updateFilter (FilterState& filter, const SidechainFilter& wanted, dsp::eq::FilterType type, bool jump) noexcept
@@ -129,6 +137,13 @@ void CompressorModule::applySettings (bool jump) noexcept
     s.holdMs = pending.holdMs;
     s.autoRelease = pending.autoRelease;
     dynamics.setSettings (s);
+
+    // Lowest sidechain level that could move the gain: the start of the knee, lower by what an
+    // RMS detector can read above the peaks.
+    const auto rms = dsp::comp::traitsOf (pending.style).rmsDetector;
+    const auto triggerDb = dsp::comp::StaticCurve (s.curve).kneeStartDb() - (rms ? rmsReadingAbovePeakDb : 0.0) - standbyMarginDb;
+    standbyTriggerDb = juce::jmin (triggerDb, 60.0);
+    standbyTrigger = (float) std::pow (10.0, standbyTriggerDb / 20.0);
 
     // The detector sees the signal `lookahead` earlier than the (constantly delayed) audio.
     const auto lookahead = (int) std::lround (juce::jlimit (0.0, dsp::comp::maxLookaheadMs, (double) pending.lookaheadMs)
@@ -202,6 +217,8 @@ void CompressorModule::processCore (juce::dsp::AudioBlock<float> block, const Si
         }
     }
 
+    trackStandbyTrigger (sc0, sc1, numSamples);
+
     // 3. Delays: the audio by the maximum lookahead, the detector by what is left.
     auto scBlock = juce::dsp::AudioBlock<float> (sidechainBuffer).getSubBlock (0, numSamples);
     sidechainDelay.process (scBlock);
@@ -241,17 +258,34 @@ void CompressorModule::processCore (juce::dsp::AudioBlock<float> block, const Si
     lastLevelDb = (float) dynamics.getLevelDb();
 }
 
+void CompressorModule::trackStandbyTrigger (const float* sc0, const float* sc1, size_t numSamples) noexcept
+{
+    // The undelayed, filtered sidechain: what the detector will see 20 ms − lookahead later.
+    auto peak = 0.0f;
+    for (size_t i = 0; i < numSamples; ++i)
+        peak = juce::jmax (peak, std::abs (sc0[i]), std::abs (sc1[i]));
+
+    quietSamples = peak >= standbyTrigger ? 0 : juce::jmin (quietSamples + (int) numSamples, 1 << 30);
+}
+
 bool CompressorModule::isCoreNeutral() const noexcept
 {
     if (pending.listen || listen.isSmoothing() || listen.getCurrentValue() > 0.0f)
         return false;
 
     // Mix at 0 %: the output is the delayed input, whatever the gain does.
-    if (! (pending.mix > 0.0f) && ! mix.isSmoothing() && ! (mix.getCurrentValue() > 0.0f))
-        return true;
+    return ! (pending.mix > 0.0f) && ! mix.isSmoothing() && ! (mix.getCurrentValue() > 0.0f);
+}
 
-    // Otherwise only once the gain has come back and the makeup has settled at 0 dB.
-    return pending.isNeutral() && ! makeup.isSmoothing() && ! (std::abs (makeup.getCurrentValue()) > 0.0f)
+bool CompressorModule::isCoreIdle() const noexcept
+{
+    // Threshold at 0 dB: idle while nothing that could move the gain is in the delay line or in
+    // the detector, and the gain, the makeup and listen have settled.
+    // The curve the detector uses now must also start at 0 dBFS (it glides over 20 ms).
+    return pending.onlyActsAboveFullScale() && dynamics.getCurve().kneeStartDb() >= 0.0
+           && ! listen.isSmoothing() && ! (listen.getCurrentValue() > 0.0f)
+           && ! makeup.isSmoothing() && ! (std::abs (makeup.getCurrentValue()) > 0.0f)
+           && quietSamples >= quietSamplesNeeded && dynamics.getLevelDb() < standbyTriggerDb
            && dynamics.getGainDb() > -1.0e-4;
 }
 
@@ -273,10 +307,14 @@ void CompressorModule::copyCoreStateFrom (const ModuleBase& other) noexcept
     listen = o->listen;
     lastLevelDb = o->lastLevelDb;
     gainTraceLength = 0;
+    quietSamples = o->quietSamples;
+    quietSamplesNeeded = o->quietSamplesNeeded;
+    standbyTrigger = o->standbyTrigger;
+    standbyTriggerDb = o->standbyTriggerDb;
 }
 
 void CompressorModule::observe (juce::dsp::AudioBlock<const float> alignedInput, juce::dsp::AudioBlock<const float> output,
-                                const SidechainBlock* sidechain, bool wetComputed) noexcept
+                                const SidechainBlock* sidechain, bool wetHeard) noexcept
 {
     if (meter == nullptr)
         return;
@@ -302,7 +340,7 @@ void CompressorModule::observe (juce::dsp::AudioBlock<const float> alignedInput,
         meter->sidechainMissing.store (false);
     }
 
-    const auto useTrace = wetComputed && gainTraceLength >= (int) numSamples;
+    const auto useTrace = wetHeard && gainTraceLength >= (int) numSamples;
     auto points = std::array<dsp::comp::MeterPoint, 64> {};
     int numPoints = 0;
 
